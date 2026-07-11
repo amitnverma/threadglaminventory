@@ -1,0 +1,9 @@
+# Protect config
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# PHP settings (if allowed by host)
+php_value upload_max_filesize 10M
+php_value post_max_size 12M
