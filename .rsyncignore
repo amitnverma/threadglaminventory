@@ -1,37 +1,10 @@
-# Keep server-only / local / legacy files off the VPS
+# Do not sync these to VPS
 .git/
 .github/
 .gitignore
 .rsyncignore
 .DS_Store
-.env
-.env.*
-!.env.example
 config.php
 uploads/
 !uploads/.htaccess
-
-# Legacy stacks not used on Hostinger PHP deploy
-backend/
-frontend/
-node_modules/
-vendor/
-composer.phar
-composer.lock
-package.json
-package-lock.json
-vite.config.js
-phpunit.xml
-artisan
-app/
-bootstrap/
-database/
-lang/
-public/
-resources/
-routes/
-storage/
-tests/
-.editorconfig
-.gitattributes
 *.log

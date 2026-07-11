@@ -14,8 +14,8 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
       - name: Deploy via rsync over SSH
         uses: burnett01/rsync-deployments@7.0.1
@@ -29,7 +29,7 @@ jobs:
           remote_port: ${{ secrets.VPS_PORT || 22 }}
 
       - name: Fix uploads permissions
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}

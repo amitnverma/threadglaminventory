@@ -1,8 +1,0 @@
-{
-  "name": "threadglam-event-manager",
-  "private": true,
-  "description": "This app is now PHP-based. See README.md. The scripts below are for the legacy Node.js version only.",
-  "scripts": {
-    "dev": "echo 'Use PHP: open http://localhost/threadGlam/Untitled/ in browser with XAMPP running'"
-  }
-}

@@ -124,11 +124,10 @@ reports.php            P&L reports
 settings.php           Company settings
 includes/              PHP helpers, layout
 assets/css/style.css   Styles
-assets/js/app.js       Minimal JavaScript
+assets/js/app.js       Client-side JavaScript
 sql/schema.sql         Database tables
 sql/seed.sql           Demo data
+scripts/               Deploy setup helper
 ```
 
-## Note on Previous Node.js Version
-
-The `backend/` and `frontend/` folders contain the previous Node.js + React version. They are **not needed** on Hostinger. You can delete them or keep for reference.
+Pure PHP app — no Node.js or build step required.

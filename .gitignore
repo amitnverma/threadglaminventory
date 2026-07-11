@@ -1,21 +1,6 @@
-# PHP app
+# Local / server-only files
 config.php
 uploads/*
 !uploads/.htaccess
-
-# Old Node.js app (not needed on Hostinger)
-backend/node_modules/
-frontend/node_modules/
-frontend/dist/
-backend/uploads/
-node_modules/
-
-# Legacy Laravel
-vendor/
-composer.phar
-composer.lock
-
-.env
-backend/.env
 .DS_Store
 *.log
