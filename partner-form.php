@@ -34,7 +34,7 @@ $d = $partner ?: ['name'=>'','phone'=>'','email'=>'','default_split_percent'=>0,
     <form method="post">
         <div class="form-group"><label>Partner Name *</label><input name="name" value="<?= e($d['name']) ?>" placeholder="Business or individual name" required></div>
         <div class="form-row">
-            <div class="form-group"><label>Phone</label><input name="phone" value="<?= e($d['phone']) ?>" placeholder="+91 98765 43210"></div>
+            <div class="form-group"><label>Phone</label><input name="phone" value="<?= e($d['phone']) ?>" placeholder="(555) 123-4567"></div>
             <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= e($d['email']) ?>" placeholder="partner@email.com"></div>
         </div>
         <div class="form-group">

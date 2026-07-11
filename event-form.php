@@ -52,7 +52,7 @@ $statuses = ['inquiry','estimated','confirmed','completed','cancelled'];
                 <input name="new_customer_phone" placeholder="Phone">
             </div>
         </details>
-        <div class="form-group"><label>Event Title *</label><input name="title" value="<?= e($d['title']) ?>" placeholder="e.g. Sharma Wedding Reception" required></div>
+        <div class="form-group"><label>Event Title *</label><input name="title" value="<?= e($d['title']) ?>" placeholder="e.g. Johnson Wedding Reception" required></div>
         <div class="form-row">
             <div class="form-group"><label>Event Type</label>
                 <select name="ceremony_type"><option value="">— Select —</option>

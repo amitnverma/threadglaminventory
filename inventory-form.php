@@ -69,11 +69,11 @@ $previewReorder = generateReorderLevel((int)$d['quantity_on_hand']);
             <div class="form-group"><label>Initial Quantity</label><input type="number" name="quantity_on_hand" value="<?= (int)$d['quantity_on_hand'] ?>" min="0"></div>
             <?php endif; ?>
             <div class="form-row">
-                <div class="form-group"><label>Unit Cost (₹)</label><input type="number" step="0.01" name="unit_cost" value="<?= $d['unit_cost'] ?>" placeholder="0.00"></div>
-                <div class="form-group"><label>Rental Price (₹)</label><input type="number" step="0.01" name="rental_price" value="<?= $d['rental_price'] ?>" placeholder="0.00"></div>
+                <div class="form-group"><label>Unit Cost ($)</label><input type="number" step="0.01" name="unit_cost" value="<?= $d['unit_cost'] ?>" placeholder="0.00"></div>
+                <div class="form-group"><label>Rental Price ($)</label><input type="number" step="0.01" name="rental_price" value="<?= $d['rental_price'] ?>" placeholder="0.00"></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>Sale Price (₹)</label><input type="number" step="0.01" name="sale_price" value="<?= $d['sale_price'] ?>" placeholder="0.00"></div>
+                <div class="form-group"><label>Sale Price ($)</label><input type="number" step="0.01" name="sale_price" value="<?= $d['sale_price'] ?>" placeholder="0.00"></div>
                 <div class="form-group">
                     <label>Condition</label>
                     <select name="condition_status">

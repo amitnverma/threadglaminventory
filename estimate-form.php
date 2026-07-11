@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $currentPage = 'estimates';
 $pageTitle = $id ? 'Edit Estimate' : 'New Estimate';
 require_once __DIR__ . '/includes/header.php';
-$d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['event_id']??'','title'=>'New Estimate','status'=>'draft','tax_percent'=>$settings['default_tax_percent']??18,'discount_type'=>'percent','discount_value'=>0,'notes'=>''];
+$d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['event_id']??'','title'=>'New Estimate','status'=>'draft','tax_percent'=>$settings['default_tax_percent']??8.875,'discount_type'=>'percent','discount_value'=>0,'notes'=>''];
 $totals = calculateEstimateTotals($lines, $d);
 ?>
 

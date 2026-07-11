@@ -50,7 +50,7 @@ $editCust = $editId ? queryOne('SELECT * FROM customers WHERE id=? AND deleted_a
             <div class="form-group"><label>Full Name *</label><input name="name" value="<?= e($editCust['name'] ?? '') ?>" placeholder="Client full name" required></div>
             <div class="form-row">
                 <div class="form-group"><label>Email</label><input type="email" name="email" value="<?= e($editCust['email'] ?? '') ?>" placeholder="client@email.com"></div>
-                <div class="form-group"><label>Phone</label><input name="phone" value="<?= e($editCust['phone'] ?? '') ?>" placeholder="+91 98765 43210"></div>
+                <div class="form-group"><label>Phone</label><input name="phone" value="<?= e($editCust['phone'] ?? '') ?>" placeholder="(555) 123-4567"></div>
             </div>
             <div class="form-group"><label>Address</label><textarea name="address" placeholder="Full mailing address"><?= e($editCust['address'] ?? '') ?></textarea></div>
             <div class="form-group"><label>Notes</label><textarea name="notes" placeholder="Preferences, referrals, special requests"><?= e($editCust['notes'] ?? '') ?></textarea></div>

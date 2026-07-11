@@ -5,6 +5,10 @@ document.querySelectorAll('[data-confirm]').forEach(function (el) {
     });
 });
 
+function formatUsd(amount) {
+    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // Estimate builder - add line from catalog
 function addEstimateLine(item) {
     var tbody = document.getElementById('estimate-lines');
@@ -35,7 +39,7 @@ function updateEstimateTotal() {
         var price = parseFloat(row.querySelector('.line-price')?.value || 0);
         var amt = qty * price;
         var cell = row.querySelector('.line-amount');
-        if (cell) cell.textContent = '₹' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        if (cell) cell.textContent = formatUsd(amt);
         subtotal += amt;
     });
     var taxPct = parseFloat(document.getElementById('tax_percent')?.value || 0);
@@ -45,7 +49,7 @@ function updateEstimateTotal() {
     var taxable = Math.max(0, subtotal - discount);
     var tax = taxable * taxPct / 100;
     var total = taxable + tax;
-    var el = function (id, val) { var e = document.getElementById(id); if (e) e.textContent = '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }); };
+    var el = function (id, val) { var e = document.getElementById(id); if (e) e.textContent = formatUsd(val); };
     el('est-subtotal', subtotal);
     el('est-discount', discount);
     el('est-tax', tax);

@@ -1,16 +1,16 @@
 USE threadglam;
 
 INSERT INTO settings (id, company_name, company_address, company_phone, company_email, default_tax_percent, currency, contract_footer, pdf_header, ceremony_types)
-VALUES (1, 'ThreadGlam Events', '123 Event Street, Mumbai, Maharashtra 400001', '+91 98765 43210', 'hello@threadglam.com', 18, 'INR',
-'• Payment: 50% advance upon signing, 50% balance on or before event date.
+VALUES (1, 'ThreadGlam Events', '123 Main Street, Suite 200, New York, NY 10001', '(555) 123-4567', 'hello@threadglam.com', 8.875, 'USD',
+'• Payment: 50% deposit upon signing, 50% balance due on or before the event date.
 • Delivery: All items delivered and set up 2 hours before event start unless otherwise agreed.
 • Damage/Loss: Client is responsible for damage or loss of rented items during the event period.
 • Force Majeure: Neither party liable for delays due to weather, government restrictions, or acts of God.
 • Venue Access: Client must ensure venue access, power supply, and necessary permits.
 • Changes: Any changes to scope must be agreed in writing and may affect pricing.
-• Governing Law: This agreement is governed by the laws of India.',
+• Governing Law: This agreement is governed by the laws of the State of New York, United States.',
 'Professional Event Management & Decor Services',
-'Wedding\nReception\nBirthday\nCorporate\nAnniversary\nEngagement\nMehendi\nSangeet\nOther')
+'Wedding\nReception\nBirthday\nCorporate\nAnniversary\nEngagement\nBaby Shower\nGraduation\nOther')
 ON DUPLICATE KEY UPDATE company_name = VALUES(company_name);
 
 INSERT INTO inventory_categories (name, description) VALUES
@@ -21,21 +21,21 @@ INSERT INTO inventory_categories (name, description) VALUES
 ('Audio/Visual', 'Sound systems and displays');
 
 INSERT INTO inventory_items (category_id, name, sku, description, quantity_on_hand, unit_cost, rental_price, sale_price, condition_status, reorder_level) VALUES
-(1, 'Floral Stage Backdrop', 'DEC-001', 'Premium floral backdrop panel 8x6 ft', 5, 15000, 8000, 25000, 'excellent', 1),
-(2, 'Chiavari Gold Chair', 'FUR-001', 'Elegant gold chiavari chair', 200, 2500, 350, 4500, 'good', 40),
-(3, 'LED Par Can Light', 'LGT-001', 'RGB LED par can with DMX', 40, 3500, 500, 6000, 'good', 8),
-(4, 'Ivory Satin Tablecloth', 'LIN-001', '120 inch round ivory satin tablecloth', 80, 800, 150, 1200, 'good', 16),
-(5, 'Wireless Microphone Set', 'AV-001', 'Dual wireless mic with receiver', 10, 12000, 2500, 18000, 'excellent', 2);
+(1, 'Floral Stage Backdrop', 'DEC-001', 'Premium floral backdrop panel 8x6 ft', 5, 180.00, 95.00, 300.00, 'excellent', 1),
+(2, 'Chiavari Gold Chair', 'FUR-001', 'Elegant gold chiavari chair', 200, 45.00, 6.00, 80.00, 'good', 40),
+(3, 'LED Par Can Light', 'LGT-001', 'RGB LED par can with DMX', 40, 65.00, 10.00, 120.00, 'good', 8),
+(4, 'Ivory Satin Tablecloth', 'LIN-001', '120 inch round ivory satin tablecloth', 80, 15.00, 3.00, 25.00, 'good', 16),
+(5, 'Wireless Microphone Set', 'AV-001', 'Dual wireless mic with receiver', 10, 220.00, 45.00, 320.00, 'excellent', 2);
 
 INSERT INTO customers (name, email, phone, address, notes) VALUES
-('Priya & Rahul Sharma', 'priya.sharma@email.com', '+91 99887 76655', 'Andheri West, Mumbai', 'Wedding client - referred by venue');
+('Sarah & Michael Johnson', 'sarah.johnson@email.com', '(555) 987-6543', '456 Oak Avenue, Brooklyn, NY 11201', 'Wedding client - referred by venue');
 
 INSERT INTO events (customer_id, title, ceremony_type, event_date, venue, status, internal_notes) VALUES
-(1, 'Sharma Wedding Reception', 'Wedding', '2026-08-15', 'Grand Ballroom, Taj Lands End', 'estimated', 'Prefer gold and ivory theme. 300 guests expected.');
+(1, 'Johnson Wedding Reception', 'Wedding', '2026-08-15', 'Grand Ballroom, The Plaza Hotel', 'estimated', 'Prefer gold and ivory theme. 300 guests expected.');
 
 INSERT INTO partners (name, phone, email, default_split_percent) VALUES
-('Rajesh Decor Services', '+91 98123 45678', 'rajesh@decor.com', 30),
-('SoundWave Audio', '+91 97654 32109', 'soundwave@audio.com', 25);
+('Elite Decor Co.', '(555) 234-5678', 'contact@elitedecor.com', 30),
+('SoundWave Audio', '(555) 345-6789', 'info@soundwaveaudio.com', 25);
 
 INSERT INTO contract_templates (name, content, is_default) VALUES
 ('Comprehensive Event Agreement', '<h1 style="text-align:center;color:#5b21b6;">EVENT SERVICE AGREEMENT</h1>

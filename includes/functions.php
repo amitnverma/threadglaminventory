@@ -34,19 +34,14 @@ function getFlash(): ?array
 
 function formatMoney($amount, ?string $currency = null): string
 {
-    $settings = getSettings();
-    $currency = $currency ?? ($settings['currency'] ?? 'INR');
     $value = (float) ($amount ?? 0);
-    if ($currency === 'INR') {
-        return '₹' . number_format($value, 2);
-    }
     return '$' . number_format($value, 2);
 }
 
 function formatDate(?string $date): string
 {
     if (!$date) return '—';
-    return date('d M Y', strtotime($date));
+    return date('M j, Y', strtotime($date));
 }
 
 function getSettings(): array
@@ -201,7 +196,7 @@ function getCeremonyTypes(): array
     if ($raw) {
         return array_filter(array_map('trim', explode("\n", $raw)));
     }
-    return ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Anniversary', 'Engagement', 'Other'];
+    return ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Anniversary', 'Engagement', 'Baby Shower', 'Graduation', 'Other'];
 }
 
 function calculateEstimateTotals(array $lines, array $opts = []): array

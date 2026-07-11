@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS settings (
   company_email VARCHAR(255),
   logo_path VARCHAR(500),
   default_tax_percent DECIMAL(5,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'INR',
+  currency VARCHAR(10) DEFAULT 'USD',
   contract_footer TEXT,
   pdf_header TEXT,
   ceremony_types TEXT,

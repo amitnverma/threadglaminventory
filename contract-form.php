@@ -49,7 +49,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>Contract Title *</label>
-                <input name="title" value="Event Service Agreement" placeholder="e.g. Sharma Wedding — Service Agreement" required>
+                <input name="title" value="Event Service Agreement" placeholder="e.g. Johnson Wedding — Service Agreement" required>
             </div>
             <div class="form-group">
                 <label>Customer *</label>
