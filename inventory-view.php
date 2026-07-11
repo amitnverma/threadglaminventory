@@ -22,6 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $images = getImages('inventory', $id);
 $adjustments = query('SELECT * FROM inventory_adjustments WHERE inventory_item_id=? ORDER BY created_at DESC LIMIT 10', [$id]);
+$purchaseHistory = query(
+    'SELECT p.id, p.supplier, p.purchase_date, pli.quantity, pli.unit_cost, pli.line_total
+     FROM purchase_line_items pli JOIN purchases p ON p.id = pli.purchase_id
+     WHERE pli.inventory_item_id=? ORDER BY p.purchase_date DESC LIMIT 10',
+    [$id]
+);
 $primaryImg = getPrimaryImage('inventory', $id);
 
 $currentPage = 'inventory';
@@ -35,6 +41,7 @@ require_once __DIR__ . '/includes/header.php';
         <p class="subtitle"><code><?= e($item['sku']) ?></code><?php if ($item['category_name']): ?> · <?= e($item['category_name']) ?><?php endif; ?></p>
     </div>
     <div class="flex">
+        <a href="purchases.php?item=<?= $id ?>" class="btn btn-secondary">+ Purchase Stock</a>
         <a href="inventory-form.php?id=<?= $id ?>" class="btn btn-primary">Edit</a>
         <form method="post" action="inventory.php" onsubmit="return confirm('Delete this item?')">
             <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $id ?>">
@@ -94,6 +101,28 @@ require_once __DIR__ . '/includes/header.php';
                 <td><?= e(ucfirst($adj['adjustment_type'])) ?></td>
                 <td><?= (int)$adj['quantity'] ?></td>
                 <td><?= e($adj['reason'] ?: '—') ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($purchaseHistory): ?>
+<div class="card">
+    <h3>Purchase History</h3>
+    <p class="text-muted mb-1">Stock received via purchases for this item.</p>
+    <div class="table-wrap">
+        <table class="data-table">
+            <tr><th>Date</th><th>Supplier</th><th>Qty Received</th><th>Unit Cost</th><th>Total</th><th></th></tr>
+            <?php foreach ($purchaseHistory as $ph): ?>
+            <tr>
+                <td><?= formatDate($ph['purchase_date']) ?></td>
+                <td><?= e($ph['supplier'] ?: '—') ?></td>
+                <td><span class="badge badge-approved">+<?= (int)$ph['quantity'] ?></span></td>
+                <td><?= formatMoney($ph['unit_cost']) ?></td>
+                <td><?= formatMoney($ph['line_total']) ?></td>
+                <td><a href="purchase-view.php?id=<?= $ph['id'] ?>" class="btn btn-sm btn-secondary">View</a></td>
             </tr>
             <?php endforeach; ?>
         </table>

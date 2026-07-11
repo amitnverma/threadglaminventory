@@ -189,6 +189,62 @@ function generateReorderLevel(int $quantity): int
     return max(3, (int)ceil($quantity * 0.2));
 }
 
+function addInventoryStock(int $itemId, int $qty, float $unitCost, string $reason): void
+{
+    $item = queryOne('SELECT quantity_on_hand, unit_cost FROM inventory_items WHERE id=? AND deleted_at IS NULL', [$itemId]);
+    if (!$item || $qty <= 0) return;
+
+    $lineTotal = $qty * $unitCost;
+    $newQty = (int)$item['quantity_on_hand'] + $qty;
+    $avgCost = $newQty > 0
+        ? (((int)$item['quantity_on_hand'] * (float)$item['unit_cost']) + $lineTotal) / $newQty
+        : $unitCost;
+
+    execute(
+        'UPDATE inventory_items SET quantity_on_hand=?, unit_cost=?, reorder_level=?, updated_at=NOW() WHERE id=?',
+        [$newQty, $avgCost, generateReorderLevel($newQty), $itemId]
+    );
+    execute(
+        'INSERT INTO inventory_adjustments (inventory_item_id, adjustment_type, quantity, reason) VALUES (?,?,?,?)',
+        [$itemId, 'add', $qty, $reason]
+    );
+}
+
+function createInventoryFromPurchase(string $name, int $qty, float $unitCost, ?int $categoryId, string $reason): int
+{
+    $sku = generateSku($categoryId);
+    $reorder = generateReorderLevel($qty);
+    execute(
+        'INSERT INTO inventory_items (category_id,name,sku,quantity_on_hand,unit_cost,reorder_level) VALUES (?,?,?,?,?,?)',
+        [$categoryId, trim($name), $sku, $qty, $unitCost, $reorder]
+    );
+    $id = (int)lastId();
+    execute(
+        'INSERT INTO inventory_adjustments (inventory_item_id, adjustment_type, quantity, reason) VALUES (?,?,?,?)',
+        [$id, 'add', $qty, $reason]
+    );
+    return $id;
+}
+
+function reversePurchaseInventory(int $purchaseId): void
+{
+    $lines = query('SELECT * FROM purchase_line_items WHERE purchase_id=? AND inventory_item_id IS NOT NULL', [$purchaseId]);
+    foreach ($lines as $line) {
+        $item = queryOne('SELECT quantity_on_hand FROM inventory_items WHERE id=? AND deleted_at IS NULL', [$line['inventory_item_id']]);
+        if (!$item) continue;
+        $qty = (int)$line['quantity'];
+        $newQty = max(0, (int)$item['quantity_on_hand'] - $qty);
+        execute(
+            'UPDATE inventory_items SET quantity_on_hand=?, reorder_level=?, updated_at=NOW() WHERE id=?',
+            [$newQty, generateReorderLevel($newQty), $line['inventory_item_id']]
+        );
+        execute(
+            'INSERT INTO inventory_adjustments (inventory_item_id, adjustment_type, quantity, reason) VALUES (?,?,?,?)',
+            [$line['inventory_item_id'], 'remove', $qty, 'Reversed — purchase #' . $purchaseId . ' deleted']
+        );
+    }
+}
+
 function getCeremonyTypes(): array
 {
     $settings = getSettings();
