@@ -74,7 +74,11 @@ return [
 
 ### 4. Install database
 
-Visit `https://yourdomain.com/install.php` in your browser, click **Install Database**.
+Visit `https://yourdomain.com/inventory/install.php` in your browser.
+
+**Database name to create in hPanel:** `threadglam`
+
+Full step-by-step: **[DATABASE-SETUP.md](DATABASE-SETUP.md)**
 
 **Delete `install.php` after installation.**
 

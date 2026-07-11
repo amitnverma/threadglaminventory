@@ -92,6 +92,21 @@ nano config.php   # add Hostinger MySQL credentials
 
 ---
 
+## Step 5 — Create database (required!)
+
+**Database name:** `threadglam`
+
+Full copy-paste guide: **[DATABASE-SETUP.md](DATABASE-SETUP.md)**
+
+Quick version:
+
+1. **hPanel** → Databases → create database `threadglam` + user
+2. On VPS: `cp config.example.php config.php` → edit DB credentials
+3. Browser: `https://www.threadglam.com/inventory/install.php` → Install
+4. Delete `install.php` after success
+
+---
+
 ## What deploy does NOT touch
 
 - `config.php` — your DB credentials
