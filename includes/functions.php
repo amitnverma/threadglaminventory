@@ -381,27 +381,39 @@ function getEventProfitLoss(int $eventId): array
 function getContractPlaceholders(): array
 {
     return [
-        'contract_number' => 'Contract number (auto)',
-        'contract_date' => 'Today\'s date',
-        'company_name' => 'Your company name',
-        'company_address' => 'Company address',
-        'company_phone' => 'Company phone',
-        'company_email' => 'Company email',
-        'customer_name' => 'Client full name',
-        'customer_email' => 'Client email',
-        'customer_phone' => 'Client phone',
-        'customer_address' => 'Client address',
-        'event_title' => 'Event title',
-        'event_date' => 'Event date',
-        'event_venue' => 'Venue name & address',
-        'event_type' => 'Ceremony / event type',
-        'items_table' => 'Line items table (auto)',
-        'subtotal' => 'Estimate subtotal',
-        'tax_percent' => 'Tax percentage',
-        'tax_amount' => 'Tax amount',
-        'discount_amount' => 'Discount amount',
-        'total' => 'Grand total',
-        'contract_footer' => 'Terms from Settings',
+        'contract_number' => 'Contract Number',
+        'contract_date' => 'Today\'s Date',
+        'company_name' => 'Your Company Name',
+        'company_address' => 'Company Address',
+        'company_phone' => 'Company Phone',
+        'company_email' => 'Company Email',
+        'customer_name' => 'Client Name',
+        'customer_email' => 'Client Email',
+        'customer_phone' => 'Client Phone',
+        'customer_address' => 'Client Address',
+        'event_title' => 'Event Title',
+        'event_date' => 'Event Date',
+        'event_venue' => 'Venue',
+        'event_type' => 'Event Type',
+        'items_table' => 'Items & Services Table',
+        'subtotal' => 'Subtotal Amount',
+        'tax_percent' => 'Tax Rate (%)',
+        'tax_amount' => 'Tax Amount',
+        'discount_amount' => 'Discount Amount',
+        'total' => 'Grand Total',
+        'contract_footer' => 'Terms & Conditions',
+    ];
+}
+
+function getContractPlaceholderGroups(): array
+{
+    return [
+        'Agreement' => ['contract_number', 'contract_date'],
+        'Your Company' => ['company_name', 'company_address', 'company_phone', 'company_email'],
+        'Client Details' => ['customer_name', 'customer_email', 'customer_phone', 'customer_address'],
+        'Event Details' => ['event_title', 'event_date', 'event_venue', 'event_type'],
+        'Pricing' => ['items_table', 'subtotal', 'tax_percent', 'tax_amount', 'discount_amount', 'total'],
+        'Terms' => ['contract_footer'],
     ];
 }
 

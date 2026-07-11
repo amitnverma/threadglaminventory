@@ -11,6 +11,9 @@ $currentPage = $currentPage ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle ?? 'Dashboard') ?> - <?= e($settings['company_name'] ?? 'ThreadGlam') ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <?php if (!empty($loadContractEditor)): ?>
+    <link rel="stylesheet" href="assets/css/contract-editor.css">
+    <?php endif; ?>
 </head>
 <body>
 <div class="app">

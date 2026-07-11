@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], $contract['event_id'] ? ['title'=>$contract['event_title'],'event_date'=>$contract['event_date'],'venue'=>$contract['venue'],'ceremony_type'=>$contract['ceremony_type']] : null, $estimate, $settings);
         $content = replaceContractPlaceholders($_POST['content'], $data);
         execute('UPDATE contracts SET content=?, updated_at=NOW() WHERE id=?', [$content, $id]);
-        flash('success', 'Placeholders refreshed with latest data.');
+        flash('success', 'Contract updated with latest customer and event data.');
         redirect('contract-edit.php?id=' . $id);
     }
     execute('UPDATE contracts SET title=?, content=?, status=?, updated_at=NOW() WHERE id=?',
@@ -36,11 +36,13 @@ if (isset($_GET['load_template'])) {
     ], $contract['event_id'] ? ['title'=>$contract['event_title'],'event_date'=>$contract['event_date'],'venue'=>$contract['venue'],'ceremony_type'=>$contract['ceremony_type']] : null, $estimate, $settings);
     $content = replaceContractPlaceholders($content, $data);
     execute('UPDATE contracts SET content=?, updated_at=NOW() WHERE id=?', [$content, $id]);
-    flash('success', 'Comprehensive template loaded.');
+    flash('success', 'Professional template loaded.');
     redirect('contract-edit.php?id=' . $id);
 }
 
-$placeholders = getContractPlaceholders();
+$placeholderGroups = getContractPlaceholderGroups();
+$placeholderLabels = getContractPlaceholders();
+$loadContractEditor = true;
 $currentPage = 'contracts';
 $pageTitle = 'Edit Contract';
 require_once __DIR__ . '/includes/header.php';
@@ -52,8 +54,8 @@ require_once __DIR__ . '/includes/header.php';
         <p class="subtitle"><?= e($contract['customer_name']) ?><?php if ($contract['event_title']): ?> · <?= e($contract['event_title']) ?><?php endif; ?></p>
     </div>
     <div class="flex no-print">
-        <a href="contract-print.php?id=<?= $id ?>" class="btn btn-primary" target="_blank">📄 Export PDF</a>
-        <a href="?id=<?= $id ?>&load_template=1" class="btn btn-secondary" onclick="return confirm('Replace content with comprehensive template?')">Load Template</a>
+        <a href="contract-print.php?id=<?= $id ?>" class="btn btn-primary" target="_blank">📄 Preview &amp; Export PDF</a>
+        <a href="?id=<?= $id ?>&load_template=1" class="btn btn-secondary" onclick="return confirm('Replace current content with the standard template?')">Reset Template</a>
     </div>
 </div>
 
@@ -62,7 +64,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="form-group"><label>Contract Title</label><input name="title" value="<?= e($contract['title']) ?>"></div>
         <div class="form-group"><label>Status</label>
             <select name="status">
-                <?php foreach (['draft'=>'Draft — editing','sent'=>'Sent — awaiting signature','signed'=>'Signed — completed','cancelled'=>'Cancelled'] as $s=>$label): ?>
+                <?php foreach (['draft'=>'Draft — still editing','sent'=>'Sent — awaiting client signature','signed'=>'Signed — completed','cancelled'=>'Cancelled'] as $s=>$label): ?>
                 <option value="<?= $s ?>" <?= $contract['status']===$s?'selected':'' ?>><?= $label ?></option>
                 <?php endforeach; ?>
             </select>
@@ -70,33 +72,50 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <div class="contract-editor">
-        <div class="card">
-            <h3>Contract Content</h3>
-            <p class="text-muted mb-1">Edit all sections — payment terms, cancellation policy, liability, and signature blocks. Use placeholders for dynamic data.</p>
-            <textarea name="content" id="contract-content" rows="28" style="font-family:monospace;font-size:.8rem"><?= e($contract['content']) ?></textarea>
+        <div class="card contract-main">
+            <div class="contract-toolbar-hint">
+                <strong>Document Editor</strong> — Edit like a Word document. Purple tags auto-fill with real data when you export PDF.
+            </div>
+            <textarea name="content" id="contract-content"><?= e($contract['content']) ?></textarea>
             <div class="flex mt-1">
-                <button type="submit" class="btn btn-primary">Save Contract</button>
-                <button type="submit" name="action" value="refresh_placeholders" class="btn btn-secondary">Refresh Placeholders</button>
+                <button type="submit" class="btn btn-primary">💾 Save Contract</button>
+                <button type="submit" name="action" value="refresh_placeholders" class="btn btn-secondary">🔄 Fill Tags with Latest Data</button>
                 <a href="contracts.php" class="btn btn-secondary">Back</a>
             </div>
         </div>
-        <div>
+
+        <div class="contract-sidebar">
             <div class="card">
-                <h3>Insert Placeholder</h3>
-                <p class="text-muted" style="font-size:.8rem">Click to insert at cursor. Filled automatically on save/print.</p>
-                <ul class="placeholder-list">
-                    <?php foreach ($placeholders as $key => $desc): ?>
-                    <li><button type="button" onclick="insertPlaceholder('{{<?= $key ?>}}')" title="<?= e($desc) ?>">{{<?= $key ?>}}</button></li>
+                <h3>Insert Auto-Fill Fields</h3>
+                <p class="text-muted sidebar-hint">Click a field to insert it. These purple tags automatically fill with customer, event, and pricing data.</p>
+                <?php foreach ($placeholderGroups as $group => $keys): ?>
+                <div class="ph-group">
+                    <div class="ph-group-title"><?= e($group) ?></div>
+                    <?php foreach ($keys as $key): ?>
+                    <button type="button" class="ph-btn" onclick="insertPlaceholder('<?= e($key) ?>', '<?= e($placeholderLabels[$key] ?? $key) ?>')">
+                        <?= e($placeholderLabels[$key] ?? $key) ?>
+                    </button>
                     <?php endforeach; ?>
-                </ul>
+                </div>
+                <?php endforeach; ?>
             </div>
-            <div class="card">
-                <h3>Live Preview</h3>
-                <div class="contract-preview" id="contract-preview" style="font-size:.8rem;max-height:500px;overflow-y:auto"></div>
+
+            <div class="card contract-tips">
+                <h3>Quick Tips</h3>
+                <ul>
+                    <li>Edit text directly — no coding needed</li>
+                    <li>Use <strong>Preview &amp; Export PDF</strong> to see the final document</li>
+                    <li><strong>Fill Tags</strong> updates all purple fields with latest data</li>
+                    <li>Change terms in <a href="settings.php">Settings</a></li>
+                </ul>
             </div>
         </div>
     </div>
 </form>
 
+<script>
+window.CONTRACT_PLACEHOLDER_LABELS = <?= json_encode($placeholderLabels) ?>;
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/7.6.0/tinymce.min.js"></script>
 <script src="assets/js/contract.js"></script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
