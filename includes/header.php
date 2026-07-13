@@ -28,6 +28,7 @@ $currentPage = $currentPage ?? '';
             <a href="categories.php" class="<?= $currentPage === 'categories' ? 'active' : '' ?>">🏷️ Categories</a>
             <a href="customers.php" class="<?= $currentPage === 'customers' ? 'active' : '' ?>">👤 Customers</a>
             <a href="events.php" class="<?= $currentPage === 'events' ? 'active' : '' ?>">📅 Events</a>
+            <a href="albums.php" class="<?= $currentPage === 'albums' ? 'active' : '' ?>">📸 Albums</a>
             <a href="estimates.php" class="<?= $currentPage === 'estimates' ? 'active' : '' ?>">📋 Estimates</a>
             <a href="purchases.php" class="<?= $currentPage === 'purchases' ? 'active' : '' ?>">🛒 Purchases</a>
             <a href="sales.php" class="<?= $currentPage === 'sales' ? 'active' : '' ?>">💰 Sales</a>
