@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $view = $_GET['view'] ?? 'active';
 $q    = trim($_GET['q'] ?? '');
 $filters = ['q' => $q];
-if ($view === 'templates')    { $filters['is_template'] = 1; }
+if ($view === 'templates')    { $filters['is_template'] = 1; $filters['status'] = 'active'; }
 elseif ($view === 'archived') { $filters['status'] = 'archived'; }
 else                          { $filters['status'] = 'active'; $filters['is_template'] = 0; }
 $albums = albumsAll($filters);
@@ -130,10 +130,15 @@ require_once __DIR__ . '/includes/header.php';
                     <a class="btn btn-sm btn-primary" href="album-view.php?id=<?= $a['id'] ?>">Open</a>
                     <?php if ($view === 'archived'): ?>
                         <form method="post" style="display:inline"><input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="view" value="<?= e($view) ?>"><button class="btn btn-sm btn-secondary">Restore</button></form>
-                        <form method="post" style="display:inline" onsubmit="return confirm('Permanently delete this album and all its photos?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="view" value="<?= e($view) ?>"><button class="btn btn-sm btn-danger">Delete</button></form>
                     <?php else: ?>
                         <form method="post" style="display:inline" onsubmit="return confirm('Archive this album?')"><input type="hidden" name="action" value="archive"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="view" value="<?= e($view) ?>"><button class="btn btn-sm btn-secondary">Archive</button></form>
                     <?php endif; ?>
+                    <form method="post" style="display:inline" onsubmit="return confirm('Permanently delete this <?= $a['is_template'] ? 'template' : 'album' ?> and all its photos? This cannot be undone.')">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="<?= $a['id'] ?>">
+                        <input type="hidden" name="view" value="<?= e($view) ?>">
+                        <button class="btn btn-sm btn-danger">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>

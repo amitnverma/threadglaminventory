@@ -130,6 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', $asTpl ? 'Saved as a reusable reference template.' : 'Album duplicated.');
         redirect('album-view.php?id=' . $newId);
     }
+
+    if ($action === 'delete_album') {
+        foreach (albumPhotos($id) as $p) albumDeleteFiles($p);
+        $dir = albumUploadDir($id);
+        if (is_dir($dir)) { array_map('unlink', glob("$dir/*") ?: []); @rmdir($dir); }
+        execute('DELETE FROM albums WHERE id=?', [$id]);
+        flash('success', ($album['is_template'] ? 'Template' : 'Album') . ' and its photos were deleted.');
+        redirect('albums.php' . ($album['is_template'] ? '?view=templates' : ''));
+    }
 }
 
 $album = albumGet($id);
@@ -174,6 +183,10 @@ require_once __DIR__ . '/includes/header.php';
         <button type="button" class="btn btn-secondary" onclick="tg('editBox')">Edit details</button>
         <button type="button" class="btn btn-secondary" onclick="tg('shareBox')">Share with customer</button>
         <button type="button" class="btn btn-secondary" onclick="tg('dupBox')">Duplicate</button>
+        <form method="post" style="display:inline" onsubmit="return confirm('Permanently delete this <?= $album['is_template'] ? 'template' : 'album' ?> and all its photos? This cannot be undone.')">
+            <input type="hidden" name="action" value="delete_album">
+            <button type="submit" class="btn btn-danger">Delete <?= $album['is_template'] ? 'template' : 'album' ?></button>
+        </form>
     </div>
 </div>
 
@@ -308,6 +321,7 @@ require_once __DIR__ . '/includes/header.php';
         <?php foreach ($photos as $p): $isCover = (int)$album['cover_photo_id'] === (int)$p['id']; ?>
         <div class="album-photo status-<?= e($p['status']) ?>">
             <label class="ap-pick"><input type="checkbox" form="bulkForm" name="ids[]" value="<?= $p['id'] ?>" class="psel"></label>
+            <button type="submit" form="pf<?= $p['id'] ?>" class="ap-del" title="Delete photo" onclick="if(!confirm('Delete this photo?'))return false;so('pf<?= $p['id'] ?>','delete')">×</button>
             <div class="ap-img" style="background-image:url('<?= e(imgUrl($p['thumbnail_path'] ?: $p['file_path'])) ?>')" onclick="lb('<?= e(imgUrl($p['file_path'])) ?>')">
                 <span class="ap-badge b-<?= e($p['status']) ?>"><?= e(albumStatusLabel($p['status'])) ?></span>
                 <?php if ($isCover): ?><span class="ap-cover">★ Cover</span><?php endif; ?>
@@ -328,7 +342,7 @@ require_once __DIR__ . '/includes/header.php';
                             <button type="submit" form="pf<?= $p['id'] ?>" class="btn btn-sm btn-secondary" onclick="so('pf<?= $p['id'] ?>','copy')">Copy</button>
                             <button type="submit" form="pf<?= $p['id'] ?>" class="btn btn-sm btn-secondary" onclick="so('pf<?= $p['id'] ?>','move')">Move</button>
                         </div>
-                        <button type="submit" form="pf<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="so('pf<?= $p['id'] ?>','delete');return confirm('Delete this photo?')">Delete</button>
+                        <button type="submit" form="pf<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="if(!confirm('Delete this photo?'))return false;so('pf<?= $p['id'] ?>','delete')">Delete photo</button>
                     </div>
                 </details>
             </div>
