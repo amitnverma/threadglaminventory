@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS settings (
   contract_footer TEXT,
   pdf_header TEXT,
   ceremony_types TEXT,
+  ai_settings LONGTEXT,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
@@ -253,4 +254,74 @@ CREATE TABLE IF NOT EXISTS admin_users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_admin_username (username)
+);
+
+CREATE TABLE IF NOT EXISTS comm_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ceremony_type VARCHAR(100) NOT NULL DEFAULT '',
+  name VARCHAR(255) NOT NULL,
+  questions_json LONGTEXT NOT NULL,
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_ceremony (ceremony_type)
+);
+
+CREATE TABLE IF NOT EXISTS comm_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  event_id INT NOT NULL,
+  customer_id INT NOT NULL,
+  session_type ENUM('initial_meeting','follow_up','design_review','approval','other') NOT NULL DEFAULT 'initial_meeting',
+  title VARCHAR(255) NOT NULL,
+  status ENUM('draft','in_progress','summarized','closed') NOT NULL DEFAULT 'draft',
+  held_at DATETIME NULL,
+  summary_text TEXT NULL,
+  summary_json LONGTEXT NULL,
+  summarized_at DATETIME NULL,
+  summary_model VARCHAR(120) NULL,
+  album_id INT NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_event (event_id),
+  INDEX idx_customer (customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS comm_answers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  session_id INT NOT NULL,
+  question_key VARCHAR(80) NOT NULL,
+  question_text VARCHAR(500) NOT NULL,
+  answer_text TEXT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  source ENUM('template','manual','ai') NOT NULL DEFAULT 'template',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_session (session_id),
+  FOREIGN KEY (session_id) REFERENCES comm_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS comm_recordings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  session_id INT NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  duration_sec INT NULL,
+  transcript_text LONGTEXT NULL,
+  transcribe_status ENUM('none','pending','done','failed') NOT NULL DEFAULT 'none',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_session (session_id),
+  FOREIGN KEY (session_id) REFERENCES comm_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS comm_decisions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  event_id INT NOT NULL,
+  session_id INT NULL,
+  decision_text VARCHAR(500) NOT NULL,
+  status ENUM('proposed','approved','rejected') NOT NULL DEFAULT 'proposed',
+  related_album_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_event (event_id),
+  INDEX idx_session (session_id)
 );

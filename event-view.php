@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/comm-functions.php';
 requireAuth();
+ensureCommsSchema();
 
 $id = (int)($_GET['id'] ?? 0);
 $tab = $_GET['tab'] ?? 'overview';
@@ -39,6 +41,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'Photo uploaded.');
         redirect('event-view.php?id=' . $id . '&tab=images');
     }
+    if ($action === 'create_comm_session') {
+        $type = $_POST['session_type'] ?? 'initial_meeting';
+        if (!in_array($type, COMM_SESSION_TYPES, true)) $type = 'initial_meeting';
+        $title = trim($_POST['title'] ?? '') ?: (commSessionTypeLabel($type) . ' — ' . ($event['customer_name'] ?? 'Customer'));
+        $admin = currentAdmin();
+        $sid = commCreateSession($event, $type, $title, $admin ? (int)$admin['id'] : null);
+        flash('success', 'Communication session started.');
+        redirect('comm-session.php?id=' . $sid);
+    }
+    if ($action === 'delete_comm_session' && !empty($_POST['session_id'])) {
+        $sid = (int)$_POST['session_id'];
+        $s = queryOne('SELECT id FROM comm_sessions WHERE id=? AND event_id=?', [$sid, $id]);
+        if ($s) {
+            foreach (commRecordings($sid) as $r) {
+                global $config;
+                $path = rtrim($config['upload_dir'], '/') . '/' . $r['file_path'];
+                if (is_file($path)) @unlink($path);
+            }
+            execute('DELETE FROM comm_sessions WHERE id=?', [$sid]);
+            flash('success', 'Session deleted.');
+        }
+        redirect('event-view.php?id=' . $id . '&tab=comms');
+    }
 }
 
 $estimates = query('SELECT * FROM estimates WHERE event_id=? ORDER BY created_at DESC', [$id]);
@@ -48,6 +73,8 @@ $contracts = query('SELECT * FROM contracts WHERE event_id=?', [$id]);
 $pnl = getEventProfitLoss($id);
 $partners = query('SELECT * FROM partners ORDER BY name');
 $primaryImg = getPrimaryImage('event', $id);
+$commSessions = ($tab === 'comms' || $tab === 'overview') ? commSessionsForEvent($id) : [];
+$commDecisions = ($tab === 'comms' || $tab === 'overview') ? commDecisionsForEvent($id) : [];
 
 $currentPage = 'events';
 $pageTitle = $event['title'];
@@ -77,7 +104,7 @@ require_once __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <div class="tabs">
-    <?php foreach (['overview'=>'Overview','estimates'=>'Estimates','expenses'=>'Expenses','images'=>'Photos','pnl'=>'P&L'] as $k=>$label): ?>
+    <?php foreach (['overview'=>'Overview','comms'=>'Communications','estimates'=>'Estimates','expenses'=>'Expenses','images'=>'Photos','pnl'=>'P&L'] as $k=>$label): ?>
     <a href="?id=<?= $id ?>&tab=<?= $k ?>" class="<?= $tab===$k?'active':'' ?>"><?= $label ?></a>
     <?php endforeach; ?>
 </div>
@@ -102,11 +129,139 @@ require_once __DIR__ . '/includes/header.php';
         <?php if ($event['internal_notes']): ?><p class="mt-1"><strong>Notes:</strong> <?= e($event['internal_notes']) ?></p><?php endif; ?>
     </div>
 </div>
+
+<?php
+$approvedDecisions = array_values(array_filter($commDecisions, fn($d) => $d['status'] === 'approved'));
+$latestSessions = array_slice($commSessions, 0, 3);
+?>
+<?php if ($approvedDecisions || $latestSessions): ?>
+<div class="grid-2">
+    <?php if ($latestSessions): ?>
+    <div class="card">
+        <h3>Recent communications</h3>
+        <?php foreach ($latestSessions as $cs): ?>
+            <p>
+                <a href="comm-session.php?id=<?= (int)$cs['id'] ?>"><?= e($cs['title']) ?></a>
+                <span class="badge badge-draft"><?= e(commSessionStatusLabel($cs['status'])) ?></span>
+                <span class="text-muted"> · <?= e(formatDate($cs['held_at'] ?: $cs['created_at'])) ?></span>
+            </p>
+            <?php if ($cs['summary_text']): ?><p class="hint"><?= e(mb_substr($cs['summary_text'], 0, 140)) ?><?= mb_strlen($cs['summary_text']) > 140 ? '…' : '' ?></p><?php endif; ?>
+        <?php endforeach; ?>
+        <a href="?id=<?= $id ?>&tab=comms" class="btn btn-sm btn-secondary">All communications</a>
+    </div>
+    <?php endif; ?>
+    <?php if ($approvedDecisions): ?>
+    <div class="card">
+        <h3>Approved decisions</h3>
+        <ul class="comm-decision-list">
+            <?php foreach (array_slice($approvedDecisions, 0, 6) as $d): ?>
+            <li>
+                <?= e($d['decision_text']) ?>
+                <?php if ($d['related_album_id']): ?>
+                    · <a href="album-view.php?id=<?= (int)$d['related_album_id'] ?>">Album</a>
+                <?php endif; ?>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php if ($contracts): ?>
 <div class="card"><h3>Contracts</h3>
     <?php foreach ($contracts as $ct): ?>
     <p><a href="contract-edit.php?id=<?= $ct['id'] ?>"><?= e($ct['title']) ?></a> <span class="badge badge-<?= e($ct['status']) ?>"><?= e(ucfirst($ct['status'])) ?></span></p>
     <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php elseif ($tab === 'comms'): ?>
+<div class="card">
+    <div class="page-header" style="margin-bottom:1rem">
+        <div>
+            <h3 style="margin:0">Customer communications</h3>
+            <p class="subtitle" style="margin:0">Initial discovery → discussions → design options → approval</p>
+        </div>
+    </div>
+    <form method="post" class="comm-start-form">
+        <input type="hidden" name="action" value="create_comm_session">
+        <div class="form-row">
+            <div class="form-group">
+                <label>New session type</label>
+                <select name="session_type">
+                    <?php foreach (COMM_SESSION_TYPES as $t): ?>
+                    <option value="<?= $t ?>"><?= e(commSessionTypeLabel($t)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Title (optional)</label>
+                <input name="title" placeholder="e.g. First call with Priya">
+            </div>
+            <div class="form-group" style="align-self:flex-end">
+                <button class="btn btn-primary">Start session</button>
+            </div>
+        </div>
+        <p class="hint">Initial meetings load question packs for <?= e($event['ceremony_type'] ?: 'this event type') ?> automatically.</p>
+    </form>
+</div>
+
+<?php if (empty($commSessions)): ?>
+<div class="card"><div class="empty-state"><div class="icon">💬</div>
+    <h3>No conversations yet</h3>
+    <p>Start an initial meeting to walk through discovery questions for this event.</p>
+</div></div>
+<?php else: ?>
+<div class="comm-timeline">
+    <?php foreach ($commSessions as $cs): ?>
+    <div class="card comm-session-card">
+        <div class="comm-session-head">
+            <div>
+                <a class="album-name" href="comm-session.php?id=<?= (int)$cs['id'] ?>"><?= e($cs['title']) ?></a>
+                <div class="text-muted" style="font-size:.82rem">
+                    <?= e(commSessionTypeLabel($cs['session_type'])) ?>
+                    · <?= e(formatDate($cs['held_at'] ?: $cs['created_at'])) ?>
+                    · <?= (int)$cs['answer_count'] ?> questions
+                    · <?= (int)$cs['recording_count'] ?> recording<?= (int)$cs['recording_count'] === 1 ? '' : 's' ?>
+                </div>
+            </div>
+            <div class="flex">
+                <span class="badge badge-<?= $cs['status'] === 'summarized' ? 'approved' : 'draft' ?>"><?= e(commSessionStatusLabel($cs['status'])) ?></span>
+                <a class="btn btn-sm btn-primary" href="comm-session.php?id=<?= (int)$cs['id'] ?>">Open</a>
+                <form method="post" onsubmit="return confirm('Delete this session and its recordings?')">
+                    <input type="hidden" name="action" value="delete_comm_session">
+                    <input type="hidden" name="session_id" value="<?= (int)$cs['id'] ?>">
+                    <button class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+        <?php if ($cs['summary_text']): ?>
+            <p class="hint" style="margin-top:.5rem"><?= e(mb_substr($cs['summary_text'], 0, 220)) ?><?= mb_strlen($cs['summary_text']) > 220 ? '…' : '' ?></p>
+        <?php elseif ((int)$cs['answer_count'] > 0 || (int)$cs['recording_count'] > 0): ?>
+            <p class="hint" style="margin-top:.5rem"><a href="comm-session.php?id=<?= (int)$cs['id'] ?>">Ready to summarize</a> — answers or recordings are waiting.</p>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($commDecisions): ?>
+<div class="card">
+    <h3>Event decisions</h3>
+    <div class="table-wrap">
+        <table class="data-table">
+            <tr><th>Decision</th><th>Status</th><th>From session</th><th>Album</th></tr>
+            <?php foreach ($commDecisions as $d): ?>
+            <tr>
+                <td><?= e($d['decision_text']) ?></td>
+                <td><span class="badge badge-<?= $d['status'] === 'approved' ? 'approved' : ($d['status'] === 'rejected' ? 'draft' : 'sent') ?>"><?= e(ucfirst($d['status'])) ?></span></td>
+                <td><?= $d['session_id'] ? '<a href="comm-session.php?id=' . (int)$d['session_id'] . '">' . e($d['session_title'] ?: '#' . $d['session_id']) . '</a>' : '—' ?></td>
+                <td><?= $d['related_album_id'] ? '<a href="album-view.php?id=' . (int)$d['related_album_id'] . '">View</a>' : '—' ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
 </div>
 <?php endif; ?>
 

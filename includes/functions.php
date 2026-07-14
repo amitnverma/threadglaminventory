@@ -493,6 +493,14 @@ function ensureSettingsColumns(): void
     } catch (Exception $e) {
         // ignore if cannot alter
     }
+    try {
+        $cols = query("SHOW COLUMNS FROM settings LIKE 'ai_settings'");
+        if (empty($cols)) {
+            execute('ALTER TABLE settings ADD COLUMN ai_settings LONGTEXT NULL AFTER ceremony_types');
+        }
+    } catch (Exception $e) {
+        // ignore
+    }
 }
 
 function actionButtons(string $editUrl, ?string $deleteAction = null, ?int $deleteId = null, ?string $viewUrl = null): string
