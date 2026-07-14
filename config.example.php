@@ -13,5 +13,7 @@ return [
     'db_pass' => 'YOUR_PASSWORD_HERE',   // ← your database password
     'app_name' => 'ThreadGlam Events',
     'upload_dir' => __DIR__ . '/uploads',
-    'admin_password' => '',              // set a password to protect the app
+    // Optional: used only to seed the first admin account if the admins table is empty.
+    // After that, manage logins in Admin Users. Leave empty to seed admin / admin123.
+    'admin_password' => '',
 ];

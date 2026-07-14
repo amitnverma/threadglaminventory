@@ -68,7 +68,7 @@ return [
     'db_name' => 'u123456789_threadglam',
     'db_user' => 'u123456789_user',
     'db_pass' => 'your_password',
-    'admin_password' => 'your_secret',  // optional login protection
+    'admin_password' => 'your_secret',  // seeds first admin only if table is empty
 ];
 ```
 
@@ -98,9 +98,16 @@ chmod 755 uploads/
 4. Visit `http://localhost/threadGlam/Untitled/install.php`
 5. Open `http://localhost/threadGlam/Untitled/`
 
-## Optional Password Protection
+## Admin Login
 
-Set `admin_password` in `config.php` to require a login before accessing the app.
+The app always requires an admin login. Accounts are managed in **Admin Users**.
+
+- First install seeds a default user: **admin** / **admin123** (or the value of `admin_password` in `config.php` if set)
+- Change that password immediately under Admin Users
+- You can create, edit, deactivate, or delete additional admin accounts
+- Customer album share links (`share.php`) stay public — no login required
+
+`admin_password` in `config.php` is only used to seed the first account when the admins table is empty.
 
 ## Contract PDF
 

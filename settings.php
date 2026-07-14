@@ -61,6 +61,6 @@ $defaultCeremonyTypes = "Wedding\nReception\nBirthday\nCorporate\nAnniversary\nE
     <button class="btn btn-primary">Save All Settings</button>
 </form>
 
-<p class="text-muted mt-1">To protect the app, set <code>admin_password</code> in <code>config.php</code> on your server.</p>
+<p class="text-muted mt-1">App login is managed under <a href="admins.php">Admin Users</a> — create accounts, reset passwords, or deactivate users there.</p>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

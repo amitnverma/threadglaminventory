@@ -242,3 +242,15 @@ CREATE TABLE IF NOT EXISTS contracts (
   FOREIGN KEY (estimate_id) REFERENCES estimates(id) ON DELETE SET NULL,
   FOREIGN KEY (template_id) REFERENCES contract_templates(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(80) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  last_login_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_admin_username (username)
+);

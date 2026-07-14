@@ -154,7 +154,7 @@ return [
     'db_name' => 'threadglam',        // your database name from hPanel
     'db_user' => 'threadglam_user',   // your database user
     'db_pass' => 'YourPasswordHere',
-    'admin_password' => 'admin123',   // optional app login
+    'admin_password' => 'admin123',   // seeds first admin login (change after install)
 ];
 PHP
 ) ?></pre>
@@ -162,7 +162,7 @@ PHP
 
     <div class="step">
         <h3>Step 3 — Click Install</h3>
-        <p>Creates 18 tables + demo inventory, customer, event data.</p>
+        <p>Creates tables + demo inventory, customer, event data. Default login: <code>admin</code> / value of <code>admin_password</code> in config (or <code>admin123</code>).</p>
         <?php if ($hasConfig): ?>
             <a href="?step=run" class="btn">Install Database Now</a>
         <?php else: ?>

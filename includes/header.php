@@ -36,7 +36,15 @@ $currentPage = $currentPage ?? '';
             <a href="contracts.php" class="<?= $currentPage === 'contracts' ? 'active' : '' ?>">📄 Contracts</a>
             <a href="reports.php" class="<?= $currentPage === 'reports' ? 'active' : '' ?>">📈 Reports</a>
             <a href="settings.php" class="<?= $currentPage === 'settings' ? 'active' : '' ?>">⚙️ Settings</a>
+            <a href="admins.php" class="<?= $currentPage === 'admins' ? 'active' : '' ?>">🔐 Admin Users</a>
         </nav>
+        <?php $navAdmin = currentAdmin(); if ($navAdmin): ?>
+        <div class="sidebar-user">
+            <div class="sidebar-user-name"><?= e($navAdmin['display_name']) ?></div>
+            <div class="sidebar-user-meta">@<?= e($navAdmin['username']) ?></div>
+            <a href="logout.php" class="btn btn-sm btn-secondary sidebar-logout">Sign out</a>
+        </div>
+        <?php endif; ?>
     </aside>
     <main class="content">
         <?php $flash = getFlash(); if ($flash): ?>

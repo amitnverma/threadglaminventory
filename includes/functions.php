@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/admin-auth.php';
 
 $config = require __DIR__ . '/../config.php';
 
@@ -52,16 +53,27 @@ function getSettings(): array
 
 function requireAuth(): void
 {
-    global $config;
-    if (empty($config['admin_password'])) return;
-    if (!empty($_SESSION['logged_in'])) return;
+    try {
+        ensureAdminUsersSchema();
+    } catch (Exception $e) {
+        // DB may not be installed yet — install.php / share pages handle their own access.
+        http_response_code(503);
+        echo '<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:520px;margin:3rem auto;padding:1rem">';
+        echo '<h2>Database not ready</h2><p>Run <a href="install.php">install.php</a> first, or check <code>config.php</code>.</p>';
+        echo '<p class="text-muted">' . htmlspecialchars($e->getMessage()) . '</p></body></html>';
+        exit;
+    }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_password'])) {
-        if ($_POST['login_password'] === $config['admin_password']) {
-            $_SESSION['logged_in'] = true;
+    if (isLoggedIn()) return;
+
+    // Old sessions (password-only) without admin_id must sign in again.
+    unset($_SESSION['logged_in']);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_username'], $_POST['login_password'])) {
+        if (adminAttemptLogin($_POST['login_username'], $_POST['login_password'])) {
             redirect($_SERVER['REQUEST_URI']);
         }
-        flash('error', 'Wrong password.');
+        flash('error', 'Invalid username or password.');
     }
     include __DIR__ . '/login.php';
     exit;
