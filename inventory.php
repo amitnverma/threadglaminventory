@@ -41,6 +41,8 @@ $loadInventorySheet = true;
 $pageScripts = ['assets/js/inventory-grid.js'];
 require_once __DIR__ . '/includes/header.php';
 
+backfillDecorInventoryCategories();
+
 $search = $_GET['search'] ?? '';
 $catId = $_GET['category'] ?? '';
 $where = 'i.deleted_at IS NULL';
@@ -69,7 +71,7 @@ $categories = query('SELECT * FROM inventory_categories ORDER BY name');
 <div class="page-header inv-sheet-page">
     <div>
         <h1>Inventory</h1>
-        <p class="subtitle"><?= count($items) ?> items — edit cells directly, then save</p>
+        <p class="subtitle"><?= count($items) ?> items — edit cells like a spreadsheet, then save</p>
     </div>
     <div class="flex">
         <a href="categories.php" class="btn btn-secondary">Categories</a>
@@ -103,7 +105,7 @@ $categories = query('SELECT * FROM inventory_categories ORDER BY name');
 <?php else: ?>
 <div class="card inv-sheet-card">
     <div class="inv-sheet-toolbar">
-        <span class="inv-sheet-hint">Click any cell to edit. Qty changes belong on Buy / Restock (keeps cost history accurate).</span>
+        <span class="inv-sheet-hint">Click any cell to edit name, category, cost, rental, or sale. Qty changes go through Buy / Restock. Use ⋯ only for photos and history.</span>
         <span class="spacer"></span>
         <span class="inv-sheet-status" id="inv-grid-status">All saved</span>
         <button type="button" class="btn btn-primary btn-sm" id="inv-grid-save" disabled>Save changes</button>

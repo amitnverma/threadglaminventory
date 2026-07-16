@@ -45,6 +45,8 @@ function ensureDecorInventorySchema(): void
     decorEnsureColumn('decor_inventory_items', 'quantity_on_hand', "INT NOT NULL DEFAULT 0 AFTER quantity");
     decorEnsureColumn('decor_inventory_items', 'default_markup_percent', "DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER line_total");
 
+    backfillDecorInventoryCategories();
+
     db()->exec(
         "CREATE TABLE IF NOT EXISTS decor_inventory_handoffs (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -618,8 +620,10 @@ function decorInventoryHandoff(int $id, array $map): array
         $inventoryId = null;
 
         if ($mode === 'new') {
-            $categoryId = !empty($map['category_id']) ? (int)$map['category_id'] : null;
-            if ($categoryId) {
+            $categoryId = !empty($map['category_id'])
+                ? (int)$map['category_id']
+                : getOrCreateInventoryCategoryId('Decor');
+            if (!empty($map['category_id'])) {
                 $cat = queryOne('SELECT id FROM inventory_categories WHERE id=?', [$categoryId]);
                 if (!$cat) {
                     throw new RuntimeException('Invalid category.');

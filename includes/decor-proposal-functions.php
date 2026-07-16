@@ -566,23 +566,37 @@ function decorEnsureMainInventoryItem(array $decorItem, int $qty, float $unitCos
         throw new RuntimeException('Decor item is missing a name.');
     }
 
+    $decorCategoryId = getOrCreateInventoryCategoryId('Decor');
+
     $linkedId = (int)($decorItem['inventory_item_id'] ?? 0);
     if ($linkedId > 0) {
         $linked = queryOne(
-            'SELECT id FROM inventory_items WHERE id=? AND deleted_at IS NULL',
+            'SELECT id, category_id FROM inventory_items WHERE id=? AND deleted_at IS NULL',
             [$linkedId]
         );
         if ($linked) {
+            if ($linked['category_id'] === null || $linked['category_id'] === '') {
+                execute(
+                    'UPDATE inventory_items SET category_id=?, updated_at=NOW() WHERE id=?',
+                    [$decorCategoryId, $linkedId]
+                );
+            }
             return $linkedId;
         }
     }
 
     $existing = queryOne(
-        'SELECT id FROM inventory_items WHERE deleted_at IS NULL AND LOWER(name)=LOWER(?) LIMIT 1',
+        'SELECT id, category_id FROM inventory_items WHERE deleted_at IS NULL AND LOWER(name)=LOWER(?) LIMIT 1',
         [$name]
     );
     if ($existing) {
         $inventoryId = (int)$existing['id'];
+        if ($existing['category_id'] === null || $existing['category_id'] === '') {
+            execute(
+                'UPDATE inventory_items SET category_id=?, updated_at=NOW() WHERE id=?',
+                [$decorCategoryId, $inventoryId]
+            );
+        }
         execute(
             'UPDATE decor_inventory_items SET inventory_item_id=COALESCE(inventory_item_id, ?), updated_at=NOW() WHERE id=?',
             [$inventoryId, (int)$decorItem['id']]
@@ -591,7 +605,7 @@ function decorEnsureMainInventoryItem(array $decorItem, int $qty, float $unitCos
     }
 
     $reason = 'Decor publish — ' . $name . ' (decor #' . (int)$decorItem['id'] . ')';
-    $inventoryId = createInventoryFromPurchase($name, $qty, $unitCost, null, $reason);
+    $inventoryId = createInventoryFromPurchase($name, $qty, $unitCost, $decorCategoryId, $reason);
     if (!empty($decorItem['description'])) {
         execute('UPDATE inventory_items SET description=? WHERE id=?', [$decorItem['description'], $inventoryId]);
     }

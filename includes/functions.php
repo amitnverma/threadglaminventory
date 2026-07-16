@@ -230,6 +230,68 @@ function generateReorderLevel(int $quantity): int
     return max(3, (int)ceil($quantity * 0.2));
 }
 
+/**
+ * Find or create an inventory category by name (case-insensitive).
+ */
+function getOrCreateInventoryCategoryId(string $name): int
+{
+    $name = trim($name);
+    if ($name === '') {
+        throw new InvalidArgumentException('Category name is required.');
+    }
+
+    $existing = queryOne(
+        'SELECT id FROM inventory_categories WHERE LOWER(name)=LOWER(?) ORDER BY id ASC LIMIT 1',
+        [$name]
+    );
+    if ($existing) {
+        return (int)$existing['id'];
+    }
+
+    execute(
+        'INSERT INTO inventory_categories (name, description) VALUES (?,?)',
+        [$name, null]
+    );
+    return (int)lastId();
+}
+
+/**
+ * Assign the Decor category to main-inventory items that came from Decor and have none.
+ */
+function backfillDecorInventoryCategories(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $categoryId = getOrCreateInventoryCategoryId('Decor');
+    } catch (Throwable $e) {
+        return;
+    }
+
+    execute(
+        'UPDATE inventory_items i
+         INNER JOIN decor_inventory_items d ON d.inventory_item_id = i.id
+         SET i.category_id = ?, i.updated_at = NOW()
+         WHERE i.deleted_at IS NULL AND i.category_id IS NULL',
+        [$categoryId]
+    );
+
+    execute(
+        "UPDATE inventory_items i
+         SET i.category_id = ?, i.updated_at = NOW()
+         WHERE i.deleted_at IS NULL
+           AND i.category_id IS NULL
+           AND EXISTS (
+               SELECT 1 FROM inventory_adjustments a
+               WHERE a.inventory_item_id = i.id
+                 AND (a.reason LIKE 'Decor publish%' OR a.reason LIKE 'Decor handoff%')
+           )",
+        [$categoryId]
+    );
+}
+
 function addInventoryStock(int $itemId, int $qty, float $unitCost, string $reason): void
 {
     $item = queryOne('SELECT quantity_on_hand, unit_cost FROM inventory_items WHERE id=? AND deleted_at IS NULL', [$itemId]);

@@ -4,7 +4,7 @@
     var cfg = window.INV_GRID;
     if (!cfg || !document.getElementById('inventory-edit-sheet')) return;
 
-    var categoryOptions = [{ value: '', label: '—' }].concat(
+    var categoryOptions = [{ value: '', label: 'Select…' }].concat(
         (cfg.categories || []).map(function (c) {
             return { value: String(c.id), label: c.name };
         })
@@ -94,7 +94,7 @@
         renderRowActions: function (row) {
             if (!row.id) return '';
             return (
-                '<a class="btn btn-sm btn-secondary" href="inventory-view.php?id=' + row.id + '" title="Details">View</a>' +
+                '<a class="btn btn-sm btn-secondary" href="inventory-view.php?id=' + row.id + '" title="Photos & history">⋯</a>' +
                 '<a class="btn btn-sm btn-secondary" href="inventory-buy.php?item=' + row.id + '" title="Restock">+</a>' +
                 '<button type="button" class="btn btn-sm btn-danger" data-sheet-action="delete" title="Delete">×</button>'
             );
