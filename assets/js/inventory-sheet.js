@@ -50,6 +50,7 @@
         this.rows = [];
         this.dirty = false;
         this._idSeq = 0;
+        this._selectable = this.opts.selectableRows === true;
         this._typeahead = this.opts.typeahead || null;
         this._onChange = typeof this.opts.onChange === 'function' ? this.opts.onChange : null;
         this._onDirty = typeof this.opts.onDirty === 'function' ? this.opts.onDirty : null;
@@ -78,6 +79,14 @@
         this.theadRow = this.root.querySelector('thead tr');
         this.tbody = this.root.querySelector('tbody');
 
+        if (this._selectable) {
+            var thSelect = document.createElement('th');
+            thSelect.className = 'col-select';
+            thSelect.innerHTML = '<input type="checkbox" class="inv-sheet-select-all" aria-label="Select all items">';
+            this.theadRow.appendChild(thSelect);
+            this.selectAllInput = thSelect.querySelector('.inv-sheet-select-all');
+        }
+
         this.columns.forEach(function (col) {
             var th = document.createElement('th');
             th.textContent = col.label || col.key;
@@ -98,7 +107,7 @@
     };
 
     InventorySheet.prototype._emptyRow = function (data) {
-        var row = { _uid: 'r' + (++this._idSeq), _dirty: false, _meta: {} };
+        var row = { _uid: 'r' + (++this._idSeq), _dirty: false, _selected: false, _meta: {} };
         this.columns.forEach(function (col) {
             if (data && data[col.key] != null) {
                 row[col.key] = data[col.key];
@@ -155,8 +164,23 @@
         tr.dataset.uid = row._uid;
         tr.dataset.index = String(index);
         if (row._dirty) tr.classList.add('is-dirty');
+        if (row._selected) tr.classList.add('is-selected');
         if (row.id == null && !self._isBlank(row) && self.opts.mode === 'entry') {
             tr.classList.add('is-new-row');
+        }
+
+        if (this._selectable) {
+            var tdSelect = document.createElement('td');
+            tdSelect.className = 'col-select';
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'inv-sheet-row-select';
+            checkbox.dataset.uid = row._uid;
+            checkbox.checked = !!row._selected;
+            checkbox.disabled = !this._canSelectRow(row);
+            checkbox.setAttribute('aria-label', 'Select ' + (row.name || 'item'));
+            tdSelect.appendChild(checkbox);
+            tr.appendChild(tdSelect);
         }
 
         this.columns.forEach(function (col) {
@@ -349,7 +373,7 @@
         var cells = tr.querySelectorAll('td');
         this.columns.forEach(function (col, i) {
             if (!(col.type === 'readonly' || col.readonly)) return;
-            var td = cells[i];
+            var td = cells[i + (this._selectable ? 1 : 0)];
             if (!td) return;
             td.innerHTML = '';
             td.appendChild(this._renderCell(row, col, 0));
@@ -370,6 +394,38 @@
         }
     };
 
+    InventorySheet.prototype._canSelectRow = function (row) {
+        if (!this._selectable || !row || row.id == null) return false;
+        if (typeof this.opts.isRowSelectable === 'function') {
+            return !!this.opts.isRowSelectable(row);
+        }
+        return true;
+    };
+
+    InventorySheet.prototype.getSelectedRows = function () {
+        return this.rows.filter(function (row) {
+            return row._selected && this._canSelectRow(row);
+        }.bind(this));
+    };
+
+    InventorySheet.prototype.clearSelection = function () {
+        this.rows.forEach(function (row) { row._selected = false; });
+        this._render();
+        this._notifySelection();
+    };
+
+    InventorySheet.prototype._notifySelection = function () {
+        var selected = this.getSelectedRows();
+        var selectable = this.rows.filter(this._canSelectRow.bind(this));
+        if (this.selectAllInput) {
+            this.selectAllInput.checked = selectable.length > 0 && selected.length === selectable.length;
+            this.selectAllInput.indeterminate = selected.length > 0 && selected.length < selectable.length;
+        }
+        if (typeof this.opts.onSelectionChange === 'function') {
+            this.opts.onSelectionChange(selected, this);
+        }
+    };
+
     InventorySheet.prototype._ensureTrailingBlank = function () {
         if (this.opts.mode !== 'entry') return;
         if (!this.rows.length || !this._isBlank(this.rows[this.rows.length - 1])) {
@@ -381,6 +437,17 @@
 
     InventorySheet.prototype._bind = function () {
         var self = this;
+
+        if (this.selectAllInput) {
+            this.selectAllInput.addEventListener('change', function () {
+                var checked = this.checked;
+                self.rows.forEach(function (row) {
+                    row._selected = checked && self._canSelectRow(row);
+                });
+                self._render();
+                self._notifySelection();
+            });
+        }
 
         this.tbody.addEventListener('input', function (e) {
             var el = e.target;
@@ -394,6 +461,16 @@
 
         this.tbody.addEventListener('change', function (e) {
             var el = e.target;
+            if (el.classList.contains('inv-sheet-row-select')) {
+                var selectedRow = self._findRow(el.dataset.uid);
+                if (selectedRow && self._canSelectRow(selectedRow)) {
+                    selectedRow._selected = el.checked;
+                    var selectedTr = el.closest('tr');
+                    if (selectedTr) selectedTr.classList.toggle('is-selected', el.checked);
+                    self._notifySelection();
+                }
+                return;
+            }
             if (!el.dataset || !el.dataset.uid || !el.dataset.key) return;
             self._updateField(el.dataset.uid, el.dataset.key, el.value);
         });

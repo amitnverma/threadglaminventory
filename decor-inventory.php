@@ -168,6 +168,8 @@ require_once __DIR__ . '/includes/header.php';
     <div class="inv-sheet-toolbar">
         <span class="inv-sheet-hint">Edit cells inline. Use ⋯ for notes/returns details. Save when done.</span>
         <span class="spacer"></span>
+        <span class="inv-sheet-status" id="decor-grid-selected">0 selected</span>
+        <button type="button" class="btn btn-danger btn-sm" id="decor-grid-delete-selected" disabled>Delete selected</button>
         <span class="inv-sheet-status" id="decor-grid-status">All saved</span>
         <button type="button" class="btn btn-primary btn-sm" id="decor-grid-save" disabled>Save changes</button>
     </div>

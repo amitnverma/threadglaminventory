@@ -139,6 +139,14 @@
     background: #ffefc6;
 }
 
+.inv-sheet tbody tr.is-selected td {
+    background: #eef2ff;
+}
+
+.inv-sheet tbody tr.is-selected:hover td {
+    background: #e0e7ff;
+}
+
 .inv-sheet tbody tr.is-new-row td {
     background: #f3fbf6;
 }
@@ -224,6 +232,25 @@
 }
 
 /* Column widths — item flexes; others stay readable */
+.inv-sheet .col-select {
+    width: 2rem;
+    min-width: 2rem;
+    text-align: center;
+}
+
+.inv-sheet .col-select input {
+    width: .9rem;
+    height: .9rem;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.inv-sheet .col-select input:disabled {
+    cursor: not-allowed;
+    opacity: .3;
+}
+
 .inv-sheet .col-item {
     width: auto;
 }

@@ -10,6 +10,8 @@
 
     var statusEl = document.getElementById('decor-grid-status');
     var saveBtn = document.getElementById('decor-grid-save');
+    var selectedEl = document.getElementById('decor-grid-selected');
+    var deleteSelectedBtn = document.getElementById('decor-grid-delete-selected');
 
     function setStatus(text, cls) {
         if (!statusEl) return;
@@ -21,6 +23,15 @@
         mode: 'edit',
         minRows: 0,
         rows: cfg.rows || [],
+        selectableRows: true,
+        isRowSelectable: function (row) {
+            return !!row.id && !row.is_returned;
+        },
+        onSelectionChange: function (selected) {
+            var count = selected.length;
+            if (selectedEl) selectedEl.textContent = count + ' selected';
+            if (deleteSelectedBtn) deleteSelectedBtn.disabled = count === 0;
+        },
         columns: [
             {
                 key: 'name',
@@ -135,6 +146,7 @@
                         }
                         sheet.rows = sheet.rows.filter(function (r) { return r._uid !== row._uid; });
                         sheet._render();
+                        sheet._notifySelection();
                         setStatus('Item deleted', 'is-saved');
                         // Reload so handoff list stays in sync
                         window.location.reload();
@@ -149,6 +161,41 @@
             setStatus(dirty ? 'Unsaved changes' : 'All saved', dirty ? 'is-dirty' : '');
         }
     });
+
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', function () {
+            var selected = sheet.getSelectedRows();
+            if (!selected.length) return;
+            var count = selected.length;
+            if (!confirm('Delete ' + count + ' selected Decor item' + (count === 1 ? '' : 's') + '? Items with reservations or handoff history will be protected.')) return;
+
+            deleteSelectedBtn.disabled = true;
+            setStatus('Deleting…', '');
+
+            var body = new FormData();
+            body.append('csrf_token', cfg.csrf);
+            body.append('action', 'bulk_delete');
+            body.append('ids', JSON.stringify(selected.map(function (row) { return row.id; })));
+
+            fetch(cfg.apiUrl, { method: 'POST', body: body, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (!res.ok) {
+                        setStatus(res.error || 'Bulk delete failed', 'is-dirty');
+                        deleteSelectedBtn.disabled = false;
+                        alert(res.error || 'Bulk delete failed.');
+                        return;
+                    }
+                    setStatus('Deleted ' + res.deleted + ' item(s)', 'is-saved');
+                    window.location.reload();
+                })
+                .catch(function () {
+                    setStatus('Bulk delete failed', 'is-dirty');
+                    deleteSelectedBtn.disabled = false;
+                    alert('Bulk delete failed. Please try again.');
+                });
+        });
+    }
 
     if (saveBtn) {
         saveBtn.addEventListener('click', function () {

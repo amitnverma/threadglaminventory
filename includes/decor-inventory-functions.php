@@ -555,8 +555,8 @@ function decorInventoryMarkReturned(int $id, string $returnedAt, float $refundAm
     return null;
 }
 
-/** Returns error message or null on success. */
-function decorInventoryDelete(int $id): ?string
+/** Returns the reason an item cannot be deleted, or null when deletion is allowed. */
+function decorInventoryDeleteError(int $id): ?string
 {
     $item = decorInventoryGet($id);
     if (!$item) return 'Decor item not found.';
@@ -573,6 +573,15 @@ function decorInventoryDelete(int $id): ?string
     if ($reserved > 0) {
         return 'Cancel event reservations before deleting this item.';
     }
+
+    return null;
+}
+
+/** Returns error message or null on success. */
+function decorInventoryDelete(int $id): ?string
+{
+    $error = decorInventoryDeleteError($id);
+    if ($error) return $error;
 
     execute('DELETE FROM decor_inventory_items WHERE id=?', [$id]);
     return null;

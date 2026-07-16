@@ -39,4 +39,37 @@ if ($action === 'delete' && !empty($_POST['id'])) {
     exit;
 }
 
+if ($action === 'bulk_delete') {
+    $raw = $_POST['ids'] ?? '[]';
+    $ids = is_string($raw) ? json_decode($raw, true) : $raw;
+    $ids = is_array($ids)
+        ? array_values(array_unique(array_filter(array_map('intval', $ids))))
+        : [];
+    if (!$ids) {
+        echo json_encode(['ok' => false, 'deleted' => 0, 'error' => 'Select at least one Decor item.']);
+        exit;
+    }
+
+    try {
+        dbBegin();
+        foreach ($ids as $id) {
+            $item = decorInventoryGet($id);
+            $error = decorInventoryDeleteError($id);
+            if ($error) {
+                $label = $item ? ('"' . $item['name'] . '": ') : '';
+                throw new RuntimeException($label . $error);
+            }
+        }
+        foreach ($ids as $id) {
+            execute('DELETE FROM decor_inventory_items WHERE id=?', [$id]);
+        }
+        dbCommit();
+        echo json_encode(['ok' => true, 'deleted' => count($ids), 'error' => null]);
+    } catch (Throwable $e) {
+        dbRollback();
+        echo json_encode(['ok' => false, 'deleted' => 0, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'Unknown action.']);

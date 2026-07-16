@@ -107,6 +107,8 @@ $categories = query('SELECT * FROM inventory_categories ORDER BY name');
     <div class="inv-sheet-toolbar">
         <span class="inv-sheet-hint">Click any cell to edit name, category, cost, rental, or sale. Qty changes go through Buy / Restock. Use ⋯ only for photos and history.</span>
         <span class="spacer"></span>
+        <span class="inv-sheet-status" id="inv-grid-selected">0 selected</span>
+        <button type="button" class="btn btn-danger btn-sm" id="inv-grid-delete-selected" disabled>Delete selected</button>
         <span class="inv-sheet-status" id="inv-grid-status">All saved</span>
         <button type="button" class="btn btn-primary btn-sm" id="inv-grid-save" disabled>Save changes</button>
     </div>

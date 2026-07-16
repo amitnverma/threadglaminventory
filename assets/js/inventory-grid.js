@@ -12,6 +12,8 @@
 
     var statusEl = document.getElementById('inv-grid-status');
     var saveBtn = document.getElementById('inv-grid-save');
+    var selectedEl = document.getElementById('inv-grid-selected');
+    var deleteSelectedBtn = document.getElementById('inv-grid-delete-selected');
 
     function setStatus(text, cls) {
         if (!statusEl) return;
@@ -23,6 +25,12 @@
         mode: 'edit',
         minRows: 0,
         rows: cfg.rows || [],
+        selectableRows: true,
+        onSelectionChange: function (selected) {
+            var count = selected.length;
+            if (selectedEl) selectedEl.textContent = count + ' selected';
+            if (deleteSelectedBtn) deleteSelectedBtn.disabled = count === 0;
+        },
         columns: [
             {
                 key: 'name',
@@ -117,6 +125,7 @@
                     }
                     sheet.rows = sheet.rows.filter(function (r) { return r._uid !== row._uid; });
                     sheet._render();
+                    sheet._notifySelection();
                     setStatus('Item deleted', 'is-saved');
                 })
                 .catch(function () {
@@ -128,6 +137,45 @@
             setStatus(dirty ? 'Unsaved changes' : 'All saved', dirty ? 'is-dirty' : '');
         }
     });
+
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', function () {
+            var selected = sheet.getSelectedRows();
+            if (!selected.length) return;
+            var count = selected.length;
+            if (!confirm('Delete ' + count + ' selected inventory item' + (count === 1 ? '' : 's') + '? This hides them from inventory.')) return;
+
+            deleteSelectedBtn.disabled = true;
+            setStatus('Deleting…', '');
+
+            var body = new FormData();
+            body.append('csrf_token', cfg.csrf);
+            body.append('action', 'bulk_delete');
+            body.append('ids', JSON.stringify(selected.map(function (row) { return row.id; })));
+
+            fetch(cfg.apiUrl, { method: 'POST', body: body, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (!res.ok) {
+                        setStatus(res.error || 'Bulk delete failed', 'is-dirty');
+                        deleteSelectedBtn.disabled = false;
+                        alert(res.error || 'Bulk delete failed.');
+                        return;
+                    }
+                    var deleted = {};
+                    selected.forEach(function (row) { deleted[String(row.id)] = true; });
+                    sheet.rows = sheet.rows.filter(function (row) { return !deleted[String(row.id)]; });
+                    sheet._render();
+                    sheet._notifySelection();
+                    setStatus('Deleted ' + res.deleted + ' item(s)', 'is-saved');
+                })
+                .catch(function () {
+                    setStatus('Bulk delete failed', 'is-dirty');
+                    deleteSelectedBtn.disabled = false;
+                    alert('Bulk delete failed. Please try again.');
+                });
+        });
+    }
 
     if (saveBtn) {
         saveBtn.addEventListener('click', function () {

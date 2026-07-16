@@ -36,4 +36,32 @@ if ($action === 'delete' && !empty($_POST['id'])) {
     exit;
 }
 
+if ($action === 'bulk_delete') {
+    $raw = $_POST['ids'] ?? '[]';
+    $ids = is_string($raw) ? json_decode($raw, true) : $raw;
+    $ids = is_array($ids)
+        ? array_values(array_unique(array_filter(array_map('intval', $ids))))
+        : [];
+    if (!$ids) {
+        echo json_encode(['ok' => false, 'deleted' => 0, 'error' => 'Select at least one inventory item.']);
+        exit;
+    }
+
+    try {
+        dbBegin();
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = db()->prepare(
+            "UPDATE inventory_items SET deleted_at=NOW() WHERE deleted_at IS NULL AND id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        $deleted = $stmt->rowCount();
+        dbCommit();
+        echo json_encode(['ok' => true, 'deleted' => $deleted, 'error' => null]);
+    } catch (Throwable $e) {
+        dbRollback();
+        echo json_encode(['ok' => false, 'deleted' => 0, 'error' => 'Could not delete the selected items.']);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'Unknown action.']);

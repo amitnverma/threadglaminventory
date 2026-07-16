@@ -78,7 +78,6 @@ $currentPage = $currentPage ?? '';
             <details class="nav-group" <?= $navActive['sales'] ? 'open' : '' ?>>
                 <summary>Sales &amp; ops</summary>
                 <a href="estimates.php" class="nav-link <?= $currentPage === 'estimates' ? 'active' : '' ?>">📋 All estimates</a>
-                <a href="purchases.php" class="nav-link <?= $currentPage === 'purchases' ? 'active' : '' ?>">🛒 Purchase history</a>
                 <a href="sales.php" class="nav-link <?= $currentPage === 'sales' ? 'active' : '' ?>">💰 Sales</a>
                 <a href="partners.php" class="nav-link <?= $currentPage === 'partners' ? 'active' : '' ?>">🤝 Partners</a>
                 <a href="contracts.php" class="nav-link <?= $currentPage === 'contracts' ? 'active' : '' ?>">📄 All contracts</a>
