@@ -22,55 +22,68 @@
         return Number.isFinite(parsed) ? parsed : 0;
     }
 
+    function formatQty(value) {
+        var n = number(value);
+        var s = n.toFixed(2);
+        return s.replace(/\.?0+$/, '');
+    }
+
+    function hideEmptyHint() {
+        var hint = document.getElementById('estimate-empty-hint');
+        if (hint) hint.hidden = true;
+    }
+
     function inventoryLine(item) {
         var available = Math.max(0, number(item.available));
-        // Default contract rate = purchase cost from inventory (unit_cost).
         var purchaseCost = Math.max(0, number(item.cost != null ? item.cost : item.price));
         return [
             '<tr class="estimate-line-row" data-inventory-id="' + escapeHtml(item.id || '') + '"',
             ' data-available="' + available + '" data-source-rate="' + purchaseCost.toFixed(2) + '">',
-            '<td>',
+            '<td class="col-item">',
             '<input type="hidden" name="line_inventory_id[]" value="' + escapeHtml(item.id || '') + '">',
             '<input type="hidden" name="line_type[]" value="' + escapeHtml(item.type || 'inventory') + '">',
             '<input type="hidden" name="line_cost[]" value="' + purchaseCost.toFixed(2) + '">',
-            '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="line-label">',
-            '<small class="estimate-source-note">From inventory · purchase cost ' + money(purchaseCost) + '</small>',
+            '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="cell-input line-label" title="From inventory">',
             '</td>',
-            '<td><div class="estimate-usage">',
-            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="line-qty" oninput="updateEstimateTotal()">',
-            '<span class="usage-count"><strong>1</strong> of ' + available + '</span>',
+            '<td class="col-qty">',
+            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '</td>',
+            '<td class="col-avail"><div class="estimate-usage" title="Using 1 of ' + available + ' in stock">',
+            '<span class="usage-count"><strong>1</strong>/' + available + '</span>',
             '<span class="usage-track"><span></span></span>',
             '</div></td>',
-            '<td><div class="estimate-rate-field">',
-            '<input type="number" name="line_price[]" value="' + purchaseCost.toFixed(2) + '" min="0" step="0.01" class="line-price" oninput="updateEstimateTotal()">',
-            '<div class="rate-source"><span>Purchase ' + money(purchaseCost) + '</span>',
-            '<button type="button" class="rate-reset" onclick="resetEstimateRate(this)">Reset</button></div>',
-            '<span class="rate-status">Using purchase cost</span>',
+            '<td class="col-money"><span class="cell-readonly cell-money line-cost-display">' + purchaseCost.toFixed(2) + '</span></td>',
+            '<td class="col-money"><div class="estimate-rate-cell">',
+            '<input type="number" name="line_price[]" value="' + purchaseCost.toFixed(2) + '" min="0" step="0.01" class="cell-input cell-money line-price" oninput="updateEstimateTotal()">',
+            '<button type="button" class="rate-reset" onclick="resetEstimateRate(this)" title="Reset to purchase cost">↺</button>',
             '</div></td>',
-            '<td class="line-amount text-right">' + money(purchaseCost) + '</td>',
-            '<td><button type="button" class="btn btn-sm btn-danger" aria-label="Remove line" onclick="this.closest(\'tr\').remove();updateEstimateTotal()">×</button></td>',
+            '<td class="col-money"><span class="cell-readonly cell-money line-amount">' + purchaseCost.toFixed(2) + '</span></td>',
+            '<td class="col-actions"><button type="button" class="btn btn-sm btn-danger" aria-label="Remove line" onclick="this.closest(\'tr\').remove();updateEstimateTotal()">×</button></td>',
             '</tr>'
         ].join('');
     }
 
     function customLine(item) {
+        var cost = number(item.cost);
+        var price = number(item.price);
         return [
             '<tr class="estimate-line-row" data-inventory-id="" data-available="" data-source-rate="">',
-            '<td>',
+            '<td class="col-item">',
             '<input type="hidden" name="line_inventory_id[]" value="">',
             '<input type="hidden" name="line_type[]" value="' + escapeHtml(item.type || 'custom') + '">',
-            '<input type="hidden" name="line_cost[]" value="' + number(item.cost).toFixed(2) + '">',
-            '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="line-label">',
-            '<small class="estimate-source-note">Custom contract line</small>',
+            '<input type="hidden" name="line_cost[]" value="' + cost.toFixed(2) + '">',
+            '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="cell-input line-label" title="Custom / labor">',
             '</td>',
-            '<td><div class="estimate-usage">',
-            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="line-qty" oninput="updateEstimateTotal()">',
+            '<td class="col-qty">',
+            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '</td>',
+            '<td class="col-avail"><span class="cell-readonly muted">—</span></td>',
+            '<td class="col-money"><span class="cell-readonly cell-money line-cost-display">' + cost.toFixed(2) + '</span></td>',
+            '<td class="col-money"><div class="estimate-rate-cell">',
+            '<input type="number" name="line_price[]" value="' + price.toFixed(2) + '" min="0" step="0.01" class="cell-input cell-money line-price" oninput="updateEstimateTotal()">',
             '</div></td>',
-            '<td><div class="estimate-rate-field">',
-            '<input type="number" name="line_price[]" value="' + number(item.price).toFixed(2) + '" min="0" step="0.01" class="line-price" oninput="updateEstimateTotal()">',
-            '</div></td>',
-            '<td class="line-amount text-right">' + money(number(item.price)) + '</td>',
-            '<td><button type="button" class="btn btn-sm btn-danger" aria-label="Remove line" onclick="this.closest(\'tr\').remove();updateEstimateTotal()">×</button></td>',
+            '<td class="col-money"><span class="cell-readonly cell-money line-amount">' + price.toFixed(2) + '</span></td>',
+            '<td class="col-actions"><button type="button" class="btn btn-sm btn-danger" aria-label="Remove line" onclick="this.closest(\'tr\').remove();updateEstimateTotal()">×</button></td>',
             '</tr>'
         ].join('');
     }
@@ -101,12 +114,14 @@
             }
         }
 
+        hideEmptyHint();
         tbody.insertAdjacentHTML('beforeend', item.id ? inventoryLine(item) : customLine(item));
         window.updateEstimateTotal();
         var added = tbody.lastElementChild;
         if (added) {
             added.classList.add('is-highlighted');
-            added.querySelector('.line-qty')?.focus();
+            var focusEl = added.querySelector('.line-qty');
+            if (focusEl) focusEl.focus();
         }
     };
 
@@ -135,10 +150,15 @@
         if (availableRaw === '') return;
 
         var available = Math.max(0, number(availableRaw));
-        var count = row.querySelector('.usage-count strong');
+        var count = row.querySelector('.usage-count');
         var track = row.querySelector('.usage-track span');
         var usage = row.querySelector('.estimate-usage');
-        if (count) count.textContent = String(quantity);
+        if (count) {
+            count.innerHTML = '<strong>' + escapeHtml(formatQty(quantity)) + '</strong>/' + available;
+        }
+        if (usage) {
+            usage.title = 'Using ' + formatQty(quantity) + ' of ' + available + ' in stock';
+        }
         if (track) {
             var percent = available > 0 ? Math.min(100, Math.max(0, quantity / available * 100)) : 100;
             track.style.width = percent + '%';
@@ -146,31 +166,44 @@
         if (usage) usage.classList.toggle('is-over', quantity > available);
     }
 
-    function updateRateStatus(row, rate) {
-        var status = row.querySelector('.rate-status');
-        if (!status || row.dataset.sourceRate === '') return;
+    function updateRateReset(row, rate) {
+        var reset = row.querySelector('.rate-reset');
+        if (!reset || row.dataset.sourceRate === '') return;
         var sourceRate = number(row.dataset.sourceRate);
         var overridden = Math.abs(rate - sourceRate) > 0.0001;
-        status.textContent = overridden ? 'Overridden for contract' : 'Using purchase cost';
-        status.classList.toggle('is-overridden', overridden);
+        reset.classList.toggle('is-visible', overridden);
+    }
+
+    function updateProfit() {
+        var profitEl = document.getElementById('est-profit');
+        if (!profitEl) return;
+        var totalCost = 0;
+        document.querySelectorAll('#estimate-lines .estimate-line-row').forEach(function (row) {
+            var quantity = Math.max(0, number(row.querySelector('.line-qty') && row.querySelector('.line-qty').value));
+            var costInput = row.querySelector('input[name="line_cost[]"]');
+            totalCost += quantity * number(costInput && costInput.value);
+        });
+        var totalText = document.getElementById('est-total');
+        var total = number(String(totalText && totalText.textContent || '').replace(/[^0-9.-]/g, ''));
+        profitEl.textContent = money(total - totalCost);
     }
 
     window.updateEstimateTotal = function () {
         var subtotal = 0;
         document.querySelectorAll('#estimate-lines .estimate-line-row').forEach(function (row) {
-            var quantity = Math.max(0, number(row.querySelector('.line-qty')?.value));
-            var rate = Math.max(0, number(row.querySelector('.line-price')?.value));
+            var quantity = Math.max(0, number(row.querySelector('.line-qty') && row.querySelector('.line-qty').value));
+            var rate = Math.max(0, number(row.querySelector('.line-price') && row.querySelector('.line-price').value));
             var amount = quantity * rate;
             var amountCell = row.querySelector('.line-amount');
-            if (amountCell) amountCell.textContent = money(amount);
+            if (amountCell) amountCell.textContent = amount.toFixed(2);
             subtotal += amount;
             updateUsage(row, quantity);
-            updateRateStatus(row, rate);
+            updateRateReset(row, rate);
         });
 
-        var taxPercent = number(document.getElementById('tax_percent')?.value);
-        var discountValue = Math.max(0, number(document.getElementById('discount_value')?.value));
-        var discountType = document.getElementById('discount_type')?.value || 'percent';
+        var taxPercent = number(document.getElementById('tax_percent') && document.getElementById('tax_percent').value);
+        var discountValue = Math.max(0, number(document.getElementById('discount_value') && document.getElementById('discount_value').value));
+        var discountType = (document.getElementById('discount_type') && document.getElementById('discount_type').value) || 'percent';
         var discount = discountType === 'percent' ? subtotal * discountValue / 100 : discountValue;
         var taxable = Math.max(0, subtotal - discount);
         var tax = taxable * taxPercent / 100;
@@ -185,6 +218,7 @@
             var element = document.getElementById(pair[0]);
             if (element) element.textContent = money(pair[1]);
         });
+        updateProfit();
     };
 
     document.addEventListener('DOMContentLoaded', window.updateEstimateTotal);

@@ -122,164 +122,238 @@ $d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['ev
 $totals = calculateEstimateTotals($lines, $d);
 ?>
 
-<div class="page-header"><h1><?= $id ? 'Edit' : 'New' ?> Estimate</h1>
-<?php if ($id): ?>
-<div class="flex">
-    <a href="contract-create.php?estimate_id=<?= $id ?>" class="btn btn-secondary">→ Create Contract</a>
-    <form method="post" action="estimates.php" onsubmit="return confirm('Delete this estimate?')">
-        <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $id ?>">
-        <button class="btn btn-danger">Delete</button>
-    </form>
-</div>
-<?php endif; ?>
-</div>
-
-<form method="post">
-    <div class="form-row mb-1">
-        <div class="form-group"><label>Title</label><input name="title" value="<?= e($d['title']) ?>" required></div>
-        <div class="form-group"><label>Customer *</label>
-            <select name="customer_id" required><option value="">—</option>
-            <?php foreach ($customers as $c): ?><option value="<?= $c['id'] ?>" <?= $d['customer_id']==$c['id']?'selected':'' ?>><?= e($c['name']) ?></option><?php endforeach; ?>
-            </select>
+<div class="estimate-page">
+    <div class="page-header estimate-page-header">
+        <div>
+            <h1><?= $id ? 'Edit' : 'New' ?> Estimate</h1>
+            <p class="subtitle">Add stock on the left · edit lines like a spreadsheet · save on the right</p>
         </div>
-        <div class="form-group"><label>Event</label>
-            <select name="event_id" id="estimate_event_id"><option value="">—</option>
-            <?php foreach ($events as $ev): ?>
-                <option value="<?= (int)$ev['id'] ?>"
-                    data-customer="<?= (int)$ev['customer_id'] ?>"
-                    <?= (int)$d['event_id'] === (int)$ev['id'] ? 'selected' : '' ?>>
-                    <?= e($ev['title']) ?>
-                </option>
-            <?php endforeach; ?>
-            </select>
+        <?php if ($id): ?>
+        <div class="flex">
+            <a href="contract-create.php?estimate_id=<?= $id ?>" class="btn btn-secondary btn-sm">Create contract</a>
+            <form method="post" action="estimates.php" onsubmit="return confirm('Delete this estimate?')">
+                <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $id ?>">
+                <button class="btn btn-danger btn-sm">Delete</button>
+            </form>
         </div>
-        <div class="form-group"><label>Status</label>
-            <select name="status"><?php foreach (['draft','sent','approved','rejected'] as $s): ?><option value="<?= $s ?>" <?= ($d['status']??'draft')===$s?'selected':'' ?>><?= ucfirst($s) ?></option><?php endforeach; ?></select>
-        </div>
+        <?php endif; ?>
     </div>
 
-    <div class="estimate-layout">
-        <div class="card">
-            <h3 class="mb-1">Inventory</h3>
-            <input type="text" id="catalog-search" placeholder="Search..." oninput="filterCatalog(this.value)" class="mb-1">
-            <div id="catalog-list" style="max-height:400px;overflow-y:auto">
-            <?php foreach ($catalog as $item):
-                $thumb = getPrimaryImage('inventory', $item['id']);
-            ?>
-            <div class="catalog-item" data-name="<?= e(strtolower($item['name'])) ?>">
-                <img src="<?= e(imgUrl($thumb)) ?>" alt="">
-                <div class="catalog-item-info">
-                    <strong><?= e($item['name']) ?></strong>
-                    <div class="catalog-item-meta">
-                        <span class="is-cost">Cost <?= formatMoney($item['unit_cost']) ?></span>
-                        <span class="<?= (int)$item['quantity_on_hand'] > 0 ? 'is-available' : 'is-empty' ?>">
-                            <?= (int)$item['quantity_on_hand'] ?> available
-                        </span>
+    <form method="post" class="estimate-form">
+        <div class="card estimate-meta-bar">
+            <div class="estimate-meta-grid">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input name="title" value="<?= e($d['title']) ?>" required>
+                </div>
+                <div class="form-group">
+                    <label>Customer *</label>
+                    <select name="customer_id" required>
+                        <option value="">—</option>
+                        <?php foreach ($customers as $c): ?>
+                            <option value="<?= $c['id'] ?>" <?= $d['customer_id']==$c['id']?'selected':'' ?>><?= e($c['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Event</label>
+                    <select name="event_id" id="estimate_event_id">
+                        <option value="">—</option>
+                        <?php foreach ($events as $ev): ?>
+                            <option value="<?= (int)$ev['id'] ?>"
+                                data-customer="<?= (int)$ev['customer_id'] ?>"
+                                <?= (int)$d['event_id'] === (int)$ev['id'] ? 'selected' : '' ?>>
+                                <?= e($ev['title']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <?php foreach (['draft','sent','approved','rejected'] as $s): ?>
+                            <option value="<?= $s ?>" <?= ($d['status']??'draft')===$s?'selected':'' ?>><?= ucfirst($s) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="estimate-layout">
+            <aside class="card estimate-stock-panel">
+                <div class="estimate-panel-head">
+                    <h3>Stock</h3>
+                    <span class="hint"><?= count($catalog) ?> items</span>
+                </div>
+                <input type="search" id="catalog-search" placeholder="Search stock…" oninput="filterCatalog(this.value)" autocomplete="off">
+                <div id="catalog-list" class="estimate-catalog-list">
+                    <?php foreach ($catalog as $item): ?>
+                    <div class="catalog-item" data-name="<?= e(strtolower($item['name'])) ?>">
+                        <div class="catalog-item-info">
+                            <strong title="<?= e($item['name']) ?>"><?= e($item['name']) ?></strong>
+                            <div class="catalog-item-meta">
+                                <span class="is-cost"><?= formatMoney($item['unit_cost']) ?></span>
+                                <span class="<?= (int)$item['quantity_on_hand'] > 0 ? 'is-available' : 'is-empty' ?>">
+                                    <?= (int)$item['quantity_on_hand'] ?>
+                                </span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" title="Add" aria-label="Add <?= e($item['name']) ?>"
+                            onclick='addEstimateLine(<?= json_encode([
+                                "id" => (int)$item["id"],
+                                "label" => $item["name"],
+                                "price" => (float)$item["unit_cost"],
+                                "cost" => (float)$item["unit_cost"],
+                                "available" => (int)$item["quantity_on_hand"],
+                                "type" => "inventory"
+                            ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>+</button>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php if (empty($catalog)): ?>
+                        <div class="empty-state estimate-catalog-empty"><p>No inventory yet.</p></div>
+                    <?php endif; ?>
+                </div>
+                <div class="estimate-catalog-actions">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addCustomLine('custom')">+ Custom</button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addCustomLine('labor')">+ Labor</button>
+                </div>
+            </aside>
+
+            <section class="card estimate-lines-panel">
+                <div class="estimate-panel-head">
+                    <h3>Lines</h3>
+                    <span class="hint">Edit cells directly</span>
+                </div>
+                <div class="estimate-sheet-wrap">
+                    <table class="estimate-sheet" id="estimate-lines-table">
+                        <thead>
+                            <tr>
+                                <th class="col-item">Item</th>
+                                <th class="col-qty">Qty</th>
+                                <th class="col-avail">Avail</th>
+                                <th class="col-money">Cost</th>
+                                <th class="col-money">Rate</th>
+                                <th class="col-money">Amt</th>
+                                <th class="col-actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="estimate-lines">
+                        <?php foreach ($lines as $line):
+                            $isInventory = !empty($line['inventory_item_id']);
+                            $available = $isInventory && $line['inventory_available'] !== null
+                                ? (int)$line['inventory_available']
+                                : null;
+                            $purchaseCost = $isInventory && $line['inventory_purchase_cost'] !== null
+                                ? (float)$line['inventory_purchase_cost']
+                                : (float)$line['unit_cost'];
+                            $isOverride = $isInventory && abs((float)$line['unit_price'] - $purchaseCost) > 0.0001;
+                            $qtyDisplay = rtrim(rtrim(number_format((float)$line['quantity'], 2, '.', ''), '0'), '.');
+                        ?>
+                        <tr class="estimate-line-row" data-inventory-id="<?= (int)($line['inventory_item_id'] ?? 0) ?>"
+                            data-available="<?= $available !== null ? $available : '' ?>"
+                            data-source-rate="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
+                            <td class="col-item">
+                                <input type="hidden" name="line_inventory_id[]" value="<?= e($line['inventory_item_id']) ?>">
+                                <input type="hidden" name="line_type[]" value="<?= e($line['line_type']) ?>">
+                                <input type="hidden" name="line_cost[]" value="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
+                                <input type="text" name="line_label[]" value="<?= e($line['label']) ?>" class="cell-input line-label" title="<?= $isInventory ? 'From inventory' : 'Custom / labor' ?>">
+                            </td>
+                            <td class="col-qty">
+                                <input type="number" name="line_qty[]" value="<?= e((string)$line['quantity']) ?>"
+                                    min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">
+                            </td>
+                            <td class="col-avail">
+                                <?php if ($available !== null): ?>
+                                    <div class="estimate-usage" title="Using <?= e($qtyDisplay) ?> of <?= $available ?> in stock">
+                                        <span class="usage-count"><strong><?= e($qtyDisplay) ?></strong>/<?= $available ?></span>
+                                        <span class="usage-track"><span></span></span>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="cell-readonly muted">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="col-money">
+                                <span class="cell-readonly cell-money line-cost-display"><?= e(number_format($purchaseCost, 2, '.', '')) ?></span>
+                            </td>
+                            <td class="col-money">
+                                <div class="estimate-rate-cell">
+                                    <input type="number" step="0.01" min="0" name="line_price[]"
+                                        value="<?= e(number_format((float)$line['unit_price'], 2, '.', '')) ?>"
+                                        class="cell-input cell-money line-price" oninput="updateEstimateTotal()">
+                                    <?php if ($isInventory): ?>
+                                        <button type="button" class="rate-reset <?= $isOverride ? 'is-visible' : '' ?>"
+                                            onclick="resetEstimateRate(this)" title="Reset to purchase cost">↺</button>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td class="col-money">
+                                <span class="cell-readonly cell-money line-amount"><?= e(number_format((float)$line['quantity'] * (float)$line['unit_price'], 2, '.', '')) ?></span>
+                            </td>
+                            <td class="col-actions">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();updateEstimateTotal()" title="Remove">×</button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php if (empty($lines)): ?>
+                    <p class="estimate-empty-hint" id="estimate-empty-hint">Add stock from the left, or + Custom / + Labor.</p>
+                <?php endif; ?>
+            </section>
+
+            <aside class="card estimate-summary-panel">
+                <div class="estimate-panel-head">
+                    <h3>Summary</h3>
+                </div>
+                <div class="estimate-summary-rows">
+                    <div class="estimate-summary-row">
+                        <span>Subtotal</span>
+                        <strong id="est-subtotal"><?= formatMoney($totals['subtotal']) ?></strong>
+                    </div>
+                    <div class="form-group estimate-summary-field">
+                        <label>Discount</label>
+                        <div class="flex">
+                            <select name="discount_type" id="discount_type" onchange="updateEstimateTotal()">
+                                <option value="percent" <?= $d['discount_type']==='percent'?'selected':'' ?>>%</option>
+                                <option value="flat" <?= $d['discount_type']==='flat'?'selected':'' ?>>Flat</option>
+                            </select>
+                            <input type="number" step="0.01" name="discount_value" id="discount_value" value="<?= e((string)$d['discount_value']) ?>" oninput="updateEstimateTotal()">
+                        </div>
+                    </div>
+                    <div class="estimate-summary-row">
+                        <span>Discount</span>
+                        <strong id="est-discount"><?= formatMoney($totals['discount_amount']) ?></strong>
+                    </div>
+                    <div class="form-group estimate-summary-field">
+                        <label>Tax %</label>
+                        <input type="number" step="0.01" name="tax_percent" id="tax_percent" value="<?= e((string)$d['tax_percent']) ?>" oninput="updateEstimateTotal()">
+                    </div>
+                    <div class="estimate-summary-row">
+                        <span>Tax</span>
+                        <strong id="est-tax"><?= formatMoney($totals['tax_amount']) ?></strong>
+                    </div>
+                    <div class="estimate-summary-row is-total">
+                        <span>Total</span>
+                        <strong id="est-total"><?= formatMoney($totals['total']) ?></strong>
+                    </div>
+                    <div class="estimate-summary-row is-muted">
+                        <span>Profit est.</span>
+                        <strong id="est-profit"><?= formatMoney($totals['profit']) ?></strong>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" aria-label="Add <?= e($item['name']) ?>"
-                    onclick='addEstimateLine(<?= json_encode([
-                        "id" => (int)$item["id"],
-                        "label" => $item["name"],
-                        "price" => (float)$item["unit_cost"],
-                        "cost" => (float)$item["unit_cost"],
-                        "available" => (int)$item["quantity_on_hand"],
-                        "type" => "inventory"
-                    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>+</button>
-            </div>
-            <?php endforeach; ?>
-            </div>
-            <div class="mt-1">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="addCustomLine('custom')">+ Custom</button>
-                <button type="button" class="btn btn-sm btn-secondary" onclick="addCustomLine('labor')">+ Labor</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3 class="mb-1">Line Items</h3>
-            <div class="table-wrap">
-            <table class="data-table estimate-lines-table">
-                <thead><tr><th>Item</th><th>Use / Available</th><th>Contract Rate</th><th>Amount</th><th></th></tr></thead>
-                <tbody id="estimate-lines">
-                <?php foreach ($lines as $line): ?>
-                <?php
-                    $isInventory = !empty($line['inventory_item_id']);
-                    $available = $isInventory && $line['inventory_available'] !== null
-                        ? (int)$line['inventory_available']
-                        : null;
-                    $purchaseCost = $isInventory && $line['inventory_purchase_cost'] !== null
-                        ? (float)$line['inventory_purchase_cost']
-                        : (float)$line['unit_cost'];
-                    $isOverride = $isInventory && abs((float)$line['unit_price'] - $purchaseCost) > 0.0001;
-                ?>
-                <tr class="estimate-line-row" data-inventory-id="<?= (int)($line['inventory_item_id'] ?? 0) ?>"
-                    data-available="<?= $available !== null ? $available : '' ?>"
-                    data-source-rate="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
-                    <td><input type="hidden" name="line_inventory_id[]" value="<?= e($line['inventory_item_id']) ?>">
-                        <input type="hidden" name="line_type[]" value="<?= e($line['line_type']) ?>">
-                        <input type="hidden" name="line_cost[]" value="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
-                        <input type="text" name="line_label[]" value="<?= e($line['label']) ?>" class="line-label">
-                        <?php if ($isInventory): ?>
-                            <small class="estimate-source-note">From inventory · purchase cost <?= formatMoney($purchaseCost) ?></small>
-                        <?php else: ?>
-                            <small class="estimate-source-note">Custom contract line</small>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <div class="estimate-usage">
-                            <input type="number" name="line_qty[]" value="<?= e((string)$line['quantity']) ?>"
-                                min="0" step="0.5" class="line-qty" oninput="updateEstimateTotal()">
-                            <?php if ($available !== null): ?>
-                                <span class="usage-count"><strong><?= e((string)$line['quantity']) ?></strong> of <?= $available ?></span>
-                                <span class="usage-track"><span></span></span>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="estimate-rate-field">
-                            <input type="number" step="0.01" min="0" name="line_price[]"
-                                value="<?= e(number_format((float)$line['unit_price'], 2, '.', '')) ?>"
-                                class="line-price" oninput="updateEstimateTotal()">
-                            <?php if ($isInventory): ?>
-                                <div class="rate-source">
-                                    <span>Purchase <?= formatMoney($purchaseCost) ?></span>
-                                    <button type="button" class="rate-reset" onclick="resetEstimateRate(this)">Reset</button>
-                                </div>
-                                <span class="rate-status <?= $isOverride ? 'is-overridden' : '' ?>">
-                                    <?= $isOverride ? 'Overridden for contract' : 'Using purchase cost' ?>
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                    <td class="line-amount text-right"><?= formatMoney($line['quantity'] * $line['unit_price']) ?></td>
-                    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();updateEstimateTotal()">×</button></td>
-                </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3 class="mb-1">Summary</h3>
-            <p>Subtotal: <strong id="est-subtotal"><?= formatMoney($totals['subtotal']) ?></strong></p>
-            <div class="form-group"><label>Discount</label>
-                <div class="flex">
-                    <select name="discount_type" id="discount_type" onchange="updateEstimateTotal()"><option value="percent" <?= $d['discount_type']==='percent'?'selected':'' ?>>%</option><option value="flat" <?= $d['discount_type']==='flat'?'selected':'' ?>>Flat</option></select>
-                    <input type="number" step="0.01" name="discount_value" id="discount_value" value="<?= $d['discount_value'] ?>" onchange="updateEstimateTotal()">
+                <div class="form-group estimate-notes">
+                    <label>Notes</label>
+                    <textarea name="notes" rows="3"><?= e($d['notes']) ?></textarea>
                 </div>
-            </div>
-            <p>Discount: <strong id="est-discount"><?= formatMoney($totals['discount_amount']) ?></strong></p>
-            <div class="form-group"><label>Tax %</label><input type="number" step="0.01" name="tax_percent" id="tax_percent" value="<?= $d['tax_percent'] ?>" onchange="updateEstimateTotal()"></div>
-            <p>Tax: <strong id="est-tax"><?= formatMoney($totals['tax_amount']) ?></strong></p>
-            <p style="font-size:1.2rem">Total: <strong id="est-total"><?= formatMoney($totals['total']) ?></strong></p>
-            <p class="text-muted">Profit est: <?= formatMoney($totals['profit']) ?></p>
-            <div class="form-group mt-1"><label>Notes</label><textarea name="notes"><?= e($d['notes']) ?></textarea></div>
-            <button type="submit" class="btn btn-primary" style="width:100%">Save Estimate</button>
-            <?php if ($id): ?><a href="contract-create.php?estimate_id=<?= $id ?>" class="btn btn-secondary mt-1" style="width:100%;text-align:center;display:block">Create Contract</a><?php endif; ?>
+                <button type="submit" class="btn btn-primary estimate-save-btn">Save estimate</button>
+                <?php if ($id): ?>
+                    <a href="contract-create.php?estimate_id=<?= $id ?>" class="btn btn-secondary estimate-save-btn">Create contract</a>
+                <?php endif; ?>
+            </aside>
         </div>
-    </div>
-</form>
+    </form>
+</div>
 
 <script>
 function filterEstimateEvents() {
