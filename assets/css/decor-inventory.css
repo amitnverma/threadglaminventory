@@ -109,43 +109,175 @@
     margin-top: 0;
 }
 
-.decor-event-layout {
+.decor-event-page {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+}
+
+.decor-event-page > .card,
+.decor-event-page .decor-main-panel > .card,
+.decor-event-page .decor-stock-panel {
+    margin-bottom: 0;
+}
+
+.decor-event-page .card h3 {
+    margin-bottom: 0;
+}
+
+.decor-event-header {
+    margin-bottom: 0;
+    align-items: flex-start;
+    gap: .75rem;
+}
+
+.decor-event-header h1 {
+    font-size: 1.35rem;
+}
+
+.decor-event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .55rem .75rem;
+}
+
+.decor-event-pills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem;
+}
+
+.decor-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .3rem;
+    padding: .28rem .5rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .8rem;
+    box-shadow: var(--shadow);
+}
+
+.decor-pill em {
+    font-style: normal;
+    color: var(--muted);
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.decor-pill strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.decor-custom-bar {
+    padding: .55rem .7rem;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.decor-custom-form {
     display: grid;
-    grid-template-columns: 1.1fr 1.4fr 0.9fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    grid-template-columns: auto minmax(10rem, 1.8fr) 5.5rem 3.4rem 4.4rem 4.4rem auto;
+    gap: .4rem;
+    align-items: center;
+}
+
+.decor-custom-label {
+    font-size: .78rem;
+    white-space: nowrap;
+    color: var(--text);
+}
+
+.decor-custom-form input,
+.decor-custom-form select {
+    margin: 0;
+    padding: .32rem .45rem;
+    font-size: .8rem;
+    border-radius: 6px;
+}
+
+.decor-custom-form .btn {
+    white-space: nowrap;
+}
+
+.decor-event-workspace {
+    display: grid;
+    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+    gap: .65rem;
     align-items: start;
 }
 
+.decor-stock-panel {
+    padding: .6rem .65rem;
+    position: sticky;
+    top: 3.4rem;
+}
+
+.decor-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .4rem;
+}
+
+.decor-panel-head h3 {
+    margin: 0;
+    font-size: .88rem;
+}
+
+.decor-panel-head .hint {
+    font-size: .7rem;
+    color: var(--muted);
+}
+
+.decor-stock-panel input[type="search"] {
+    margin-bottom: .4rem;
+    padding: .32rem .45rem;
+    font-size: .78rem;
+}
+
 .decor-picker-list {
-    max-height: 420px;
+    max-height: min(58vh, 520px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.2rem;
 }
 
 .decor-picker-item {
     display: flex;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.35rem;
     align-items: center;
-    padding: 0.4rem 0.55rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
+    padding: 0.22rem 0.3rem;
+    border: 1px solid #eef1f6;
+    border-radius: 4px;
     background: #fff;
+}
+
+.decor-picker-item.is-unavailable {
+    opacity: 0.6;
 }
 
 .decor-picker-main {
     display: flex;
-    align-items: baseline;
-    gap: 0.55rem;
+    align-items: center;
+    gap: 0.35rem;
     min-width: 0;
     flex: 1;
 }
 
 .decor-picker-main strong {
-    font-size: 0.85rem;
+    font-size: 0.76rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -153,8 +285,11 @@
 
 .decor-picker-stock {
     flex-shrink: 0;
-    font-size: 0.72rem;
-    font-weight: 600;
+    min-width: 1.25rem;
+    text-align: right;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
     color: var(--muted);
 }
 
@@ -168,25 +303,294 @@
 
 .decor-add-form {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.2rem;
     align-items: center;
     flex-shrink: 0;
 }
 
 .decor-add-qty {
-    width: 3.25rem;
-    padding: 0.28rem 0.35rem;
-    font-size: 0.8rem;
+    width: 2.35rem;
+    padding: 0.15rem 0.2rem !important;
+    font-size: 0.72rem !important;
+    border-radius: 4px !important;
 }
 
-#decor-proposal-lines input[type="number"],
-#decor-proposal-lines .line-label {
+.decor-add-form .btn {
+    padding: 0.12rem 0.35rem;
+    min-width: 1.45rem;
+    line-height: 1.2;
+}
+
+.decor-show-unavailable {
     width: 100%;
-    min-width: 4rem;
+    margin-top: 0.25rem;
+    padding: 0.3rem;
+    border: 1px dashed #d1d5db;
+    border-radius: 4px;
+    background: #fafafa;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.decor-show-unavailable:hover {
+    background: #f3f4f6;
+    color: var(--text);
+}
+
+.decor-picker-empty,
+.decor-proposal-empty {
+    padding: .85rem .5rem;
+}
+
+.decor-main-panel {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    min-width: 0;
+}
+
+.decor-proposal-card {
+    padding: .65rem .75rem;
+}
+
+.decor-proposal-table {
+    table-layout: fixed;
+    width: 100%;
+    font-size: .8rem;
+}
+
+.decor-proposal-table th,
+.decor-proposal-table td {
+    padding: .38rem .35rem !important;
+    vertical-align: middle;
+}
+
+.decor-proposal-table .col-item {
+    width: 34%;
+}
+
+.decor-proposal-table .col-num {
+    width: 8.5%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.decor-proposal-table .col-status {
+    width: 11%;
+}
+
+.decor-proposal-table .col-actions {
+    width: 6.5rem;
+    text-align: right;
+}
+
+.decor-proposal-table .col-actions .action-btns {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
+
+.decor-proposal-table .badge {
+    font-size: .65rem;
+    padding: .12rem .35rem;
+    white-space: nowrap;
+}
+
+.decor-line-name {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+    font-size: .8rem;
+}
+
+.decor-line-row.is-editing .decor-line-view {
+    display: none;
+}
+
+.decor-line-edit-cell {
+    background: #f8fafc;
+}
+
+.decor-line-edit-cell[hidden] {
+    display: none !important;
+}
+
+.decor-line-edit-form {
+    margin: 0;
+}
+
+.decor-line-edit-grid {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1.8fr) 4.2rem 5rem 4.2rem 5rem auto;
+    gap: .4rem .45rem;
+    align-items: end;
+    padding: .15rem 0;
+}
+
+.decor-edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.decor-edit-field span {
+    font-size: .65rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.decor-line-edit-grid input {
+    margin: 0;
+    padding: .28rem .35rem;
+    font-size: .78rem;
+    width: 100%;
+}
+
+.decor-edit-actions {
+    padding-bottom: .05rem;
+}
+
+.decor-publish-card,
+.decor-reservations-card {
+    padding: 0;
+}
+
+.decor-publish-card > summary,
+.decor-reservations-card > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .55rem .75rem;
+    font-weight: 600;
+    font-size: .85rem;
+}
+
+.decor-publish-card > summary::-webkit-details-marker,
+.decor-reservations-card > summary::-webkit-details-marker {
+    display: none;
+}
+
+.decor-publish-card > summary::after,
+.decor-reservations-card > summary::after {
+    content: '▾';
+    color: var(--muted);
+    font-size: .7rem;
+}
+
+.decor-publish-card:not([open]) > summary::after,
+.decor-reservations-card:not([open]) > summary::after {
+    content: '▸';
+}
+
+.decor-publish-form {
+    padding: 0 .75rem .7rem;
+    border-top: 1px solid #eef2f7;
+}
+
+.decor-publish-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 0.7fr 1.3fr;
+    gap: .5rem;
+    padding-top: .6rem;
+}
+
+.decor-publish-grid .form-group {
+    margin: 0;
+}
+
+.decor-publish-grid label {
+    font-size: .7rem;
+    margin-bottom: .15rem;
+}
+
+.decor-publish-grid input,
+.decor-publish-grid select {
+    padding: .3rem .4rem;
+    font-size: .78rem;
+}
+
+.decor-publish-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .55rem;
+    margin-top: .55rem;
+}
+
+.decor-reservations-card .table-wrap {
+    padding: 0 .75rem .7rem;
+}
+
+.decor-reservations-table th,
+.decor-reservations-table td {
+    padding: .35rem .3rem !important;
+    font-size: .78rem;
 }
 
 @media (max-width: 1100px) {
-    .decor-event-layout {
+    .decor-event-workspace {
         grid-template-columns: 1fr;
+    }
+
+    .decor-stock-panel,
+    .decor-custom-bar {
+        position: static;
+    }
+
+    .decor-picker-list {
+        max-height: 240px;
+    }
+
+    .decor-custom-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .decor-custom-label,
+    .decor-custom-name {
+        grid-column: 1 / -1;
+    }
+
+    .decor-publish-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .decor-line-edit-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .decor-edit-actions {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 700px) {
+    .decor-event-header {
+        flex-direction: column;
+    }
+
+    .decor-event-meta {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .decor-publish-grid,
+    .decor-custom-form {
+        grid-template-columns: 1fr;
+    }
+
+    .decor-proposal-table .col-status,
+    .decor-proposal-table th.col-status {
+        display: none;
     }
 }
