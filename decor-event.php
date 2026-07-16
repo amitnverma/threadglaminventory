@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($err) {
             flash('error', $err);
         } else {
-            flash('success', 'Published to main estimate #' . $estId . '. Purchase costs were kept private.');
+            flash('success', 'Published to main estimate #' . $estId . '. Costs and stock items were synced.');
         }
         redirect($back);
     }
@@ -347,12 +347,12 @@ require_once __DIR__ . '/includes/header.php';
                             Subtotal <?= e(formatMoney($totals['subtotal'])) ?>
                             · Discount <?= e(formatMoney($totals['discount_amount'])) ?>
                             · Tax <?= e(formatMoney($totals['tax_amount'])) ?>
-                            · Costs stay private
+                            · Costs publish as-is · Stock items sync to main inventory
                         </div>
                         <div class="flex">
                             <button type="submit" name="action" value="update_header" class="btn btn-secondary btn-sm">Save</button>
                             <button type="submit" name="action" value="publish" class="btn btn-primary btn-sm"
-                                onclick="return confirm('Publish to the main estimate? Costs remain private.')">
+                                onclick="return confirm('Publish to the main estimate with costs? Stock items (not custom/labor) will sync to main inventory.')">
                                 Publish estimate
                             </button>
                         </div>

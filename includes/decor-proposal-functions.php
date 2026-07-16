@@ -1,7 +1,7 @@
 <?php
 /**
- * Decor event proposals — reserve stock to customer events, price privately,
- * and publish customer-facing totals into the main estimate system.
+ * Decor event proposals — reserve stock to customer events, price lines,
+ * and publish into the main estimate + inventory system.
  */
 
 require_once __DIR__ . '/decor-inventory-functions.php';
@@ -553,8 +553,59 @@ function decorProposalUpdateHeader(int $proposalId, array $input): ?string
 }
 
 /**
+ * Ensure a main inventory row exists for a Decor stock item.
+ * Custom/labor lines are skipped by the caller.
+ * Returns inventory_item_id.
+ */
+function decorEnsureMainInventoryItem(array $decorItem, int $qty, float $unitCost): int
+{
+    $qty = max(1, $qty);
+    $unitCost = max(0, $unitCost);
+    $name = trim((string)($decorItem['name'] ?? ''));
+    if ($name === '') {
+        throw new RuntimeException('Decor item is missing a name.');
+    }
+
+    $linkedId = (int)($decorItem['inventory_item_id'] ?? 0);
+    if ($linkedId > 0) {
+        $linked = queryOne(
+            'SELECT id FROM inventory_items WHERE id=? AND deleted_at IS NULL',
+            [$linkedId]
+        );
+        if ($linked) {
+            return $linkedId;
+        }
+    }
+
+    $existing = queryOne(
+        'SELECT id FROM inventory_items WHERE deleted_at IS NULL AND LOWER(name)=LOWER(?) LIMIT 1',
+        [$name]
+    );
+    if ($existing) {
+        $inventoryId = (int)$existing['id'];
+        execute(
+            'UPDATE decor_inventory_items SET inventory_item_id=COALESCE(inventory_item_id, ?), updated_at=NOW() WHERE id=?',
+            [$inventoryId, (int)$decorItem['id']]
+        );
+        return $inventoryId;
+    }
+
+    $reason = 'Decor publish — ' . $name . ' (decor #' . (int)$decorItem['id'] . ')';
+    $inventoryId = createInventoryFromPurchase($name, $qty, $unitCost, null, $reason);
+    if (!empty($decorItem['description'])) {
+        execute('UPDATE inventory_items SET description=? WHERE id=?', [$decorItem['description'], $inventoryId]);
+    }
+    execute(
+        'UPDATE decor_inventory_items SET inventory_item_id=?, updated_at=NOW() WHERE id=?',
+        [$inventoryId, (int)$decorItem['id']]
+    );
+    return $inventoryId;
+}
+
+/**
  * Publish proposal into the main estimates system.
- * Private costs are never copied (estimate line unit_cost = 0).
+ * Costs are copied as-is. Stock lines are linked into main inventory;
+ * custom/labor lines stay as non-inventory estimate lines.
  * Returns [estimateId|null, error|null]
  */
 function decorProposalPublish(int $proposalId): array
@@ -664,20 +715,40 @@ function decorProposalPublish(int $proposalId): array
         }
 
         foreach ($lines as $line) {
-            $estLineType = $line['line_type'] === 'labor' ? 'labor'
-                : ($line['line_type'] === 'custom' ? 'custom' : 'custom');
+            $isCustom = in_array($line['line_type'], ['custom', 'labor'], true);
+            $inventoryId = null;
+            $estLineType = $line['line_type'] === 'labor' ? 'labor' : ($isCustom ? 'custom' : 'inventory');
+            $unitCost = round((float)$line['unit_cost'], 2);
+
+            if (!$isCustom && !empty($line['decor_inventory_item_id'])) {
+                $decorItem = queryOne(
+                    'SELECT * FROM decor_inventory_items WHERE id=?',
+                    [(int)$line['decor_inventory_item_id']]
+                );
+                if (!$decorItem) {
+                    throw new RuntimeException('Decor stock item missing for "' . $line['label'] . '".');
+                }
+                $inventoryId = decorEnsureMainInventoryItem(
+                    $decorItem,
+                    max(1, (int)ceil((float)$line['quantity'])),
+                    $unitCost
+                );
+            }
+
             execute(
                 'INSERT INTO estimate_line_items
                     (estimate_id, line_type, inventory_item_id, label, description, quantity,
                      unit_price, unit_cost, sort_order, source_type, source_id)
-                 VALUES (?,?,NULL,?,?,?,?,0,?,?,?)',
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                 [
                     $estimateId,
                     $estLineType,
+                    $inventoryId,
                     $line['label'],
                     $line['description'],
                     $line['quantity'],
                     $line['unit_price'],
+                    $unitCost,
                     $sort++,
                     'decor_proposal',
                     $proposalId,
