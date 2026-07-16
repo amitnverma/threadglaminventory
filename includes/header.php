@@ -17,6 +17,15 @@ $currentPage = $currentPage ?? '';
     <?php if (!empty($loadDecorInventory) || !empty($loadDecorProposals)): ?>
     <link rel="stylesheet" href="assets/css/decor-inventory.css">
     <?php endif; ?>
+    <?php if (!empty($loadInventorySheet)): ?>
+    <link rel="stylesheet" href="assets/css/inventory-sheet.css">
+    <?php endif; ?>
+    <?php if (!empty($loadEstimateBuilder)): ?>
+    <link rel="stylesheet" href="assets/css/estimate-builder.css">
+    <?php endif; ?>
+    <?php if (!empty($loadCustomerHub)): ?>
+    <link rel="stylesheet" href="assets/css/customer-hub.css">
+    <?php endif; ?>
 </head>
 <body>
 <div class="app">
@@ -31,9 +40,9 @@ $currentPage = $currentPage ?? '';
             $navIsDecorOwner = $navAdmin && adminIsDecorOwnerUser($navAdmin);
             $navActive = [
                 'dashboard' => $currentPage === 'dashboard',
-                'inventory' => in_array($currentPage, ['inventory', 'categories'], true),
-                'decor'     => in_array($currentPage, ['decor-inventory', 'decor-profile', 'decor-events'], true),
-                'clients'   => in_array($currentPage, ['customers', 'events', 'albums'], true),
+                'inventory' => in_array($currentPage, ['inventory', 'inventory-buy', 'categories'], true),
+                'decor'     => in_array($currentPage, ['decor-inventory', 'decor-inventory-buy', 'decor-profile', 'decor-events'], true),
+                'clients'   => in_array($currentPage, ['customers', 'customer-view', 'events', 'albums'], true),
                 'sales'     => in_array($currentPage, ['estimates', 'purchases', 'sales', 'partners', 'contracts'], true),
                 'insights'  => $currentPage === 'reports',
                 'admin'     => in_array($currentPage, ['settings', 'admins'], true),
@@ -55,23 +64,24 @@ $currentPage = $currentPage ?? '';
             <details class="nav-group" <?= $navActive['inventory'] ? 'open' : '' ?>>
                 <summary>Stock</summary>
                 <a href="inventory.php" class="nav-link <?= $currentPage === 'inventory' ? 'active' : '' ?>">📦 Inventory</a>
+                <a href="inventory-buy.php" class="nav-link <?= $currentPage === 'inventory-buy' ? 'active' : '' ?>">🛒 Buy / Restock</a>
                 <a href="categories.php" class="nav-link <?= $currentPage === 'categories' ? 'active' : '' ?>">🏷️ Categories</a>
             </details>
 
             <details class="nav-group" <?= $navActive['clients'] ? 'open' : '' ?>>
-                <summary>Clients &amp; events</summary>
-                <a href="customers.php" class="nav-link <?= $currentPage === 'customers' ? 'active' : '' ?>">👤 Customers</a>
-                <a href="events.php" class="nav-link <?= $currentPage === 'events' ? 'active' : '' ?>">📅 Events</a>
-                <a href="albums.php" class="nav-link <?= $currentPage === 'albums' ? 'active' : '' ?>">📸 Albums</a>
+                <summary>Clients</summary>
+                <a href="customers.php" class="nav-link <?= in_array($currentPage, ['customers', 'customer-view'], true) ? 'active' : '' ?>">👤 Customers</a>
+                <a href="events.php" class="nav-link <?= $currentPage === 'events' ? 'active' : '' ?>">📅 All events</a>
+                <a href="albums.php" class="nav-link <?= $currentPage === 'albums' ? 'active' : '' ?>">📸 All albums</a>
             </details>
 
             <details class="nav-group" <?= $navActive['sales'] ? 'open' : '' ?>>
                 <summary>Sales &amp; ops</summary>
-                <a href="estimates.php" class="nav-link <?= $currentPage === 'estimates' ? 'active' : '' ?>">📋 Estimates</a>
-                <a href="purchases.php" class="nav-link <?= $currentPage === 'purchases' ? 'active' : '' ?>">🛒 Purchases</a>
+                <a href="estimates.php" class="nav-link <?= $currentPage === 'estimates' ? 'active' : '' ?>">📋 All estimates</a>
+                <a href="purchases.php" class="nav-link <?= $currentPage === 'purchases' ? 'active' : '' ?>">🛒 Purchase history</a>
                 <a href="sales.php" class="nav-link <?= $currentPage === 'sales' ? 'active' : '' ?>">💰 Sales</a>
                 <a href="partners.php" class="nav-link <?= $currentPage === 'partners' ? 'active' : '' ?>">🤝 Partners</a>
-                <a href="contracts.php" class="nav-link <?= $currentPage === 'contracts' ? 'active' : '' ?>">📄 Contracts</a>
+                <a href="contracts.php" class="nav-link <?= $currentPage === 'contracts' ? 'active' : '' ?>">📄 All contracts</a>
             </details>
 
             <details class="nav-group" <?= $navActive['insights'] ? 'open' : '' ?>>

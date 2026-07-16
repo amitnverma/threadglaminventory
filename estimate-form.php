@@ -9,7 +9,14 @@ $catalog = query('SELECT i.*, c.name as category_name FROM inventory_items i LEF
 $settings = getSettings();
 
 $estimate = $id ? queryOne('SELECT * FROM estimates WHERE id=?', [$id]) : null;
-$lines = $id ? query('SELECT * FROM estimate_line_items WHERE estimate_id=? ORDER BY sort_order', [$id]) : [];
+$lines = $id ? query(
+    'SELECT eli.*, i.quantity_on_hand AS inventory_available, i.unit_cost AS inventory_purchase_cost
+     FROM estimate_line_items eli
+     LEFT JOIN inventory_items i ON i.id=eli.inventory_item_id AND i.deleted_at IS NULL
+     WHERE eli.estimate_id=?
+     ORDER BY eli.sort_order',
+    [$id]
+) : [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerId = (int)($_POST['customer_id'] ?? 0);
@@ -108,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $currentPage = 'estimates';
 $pageTitle = $id ? 'Edit Estimate' : 'New Estimate';
+$loadEstimateBuilder = true;
+$pageScripts = ['assets/js/estimate-builder.js'];
 require_once __DIR__ . '/includes/header.php';
 $d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['event_id']??'','title'=>'New Estimate','status'=>'draft','tax_percent'=>$settings['default_tax_percent']??8.875,'discount_type'=>'percent','discount_value'=>0,'notes'=>''];
 $totals = calculateEstimateTotals($lines, $d);
@@ -161,9 +170,22 @@ $totals = calculateEstimateTotals($lines, $d);
                 <img src="<?= e(imgUrl($thumb)) ?>" alt="">
                 <div class="catalog-item-info">
                     <strong><?= e($item['name']) ?></strong>
-                    <small class="text-muted"><?= formatMoney($item['rental_price']) ?></small>
+                    <div class="catalog-item-meta">
+                        <span class="is-cost">Cost <?= formatMoney($item['unit_cost']) ?></span>
+                        <span class="<?= (int)$item['quantity_on_hand'] > 0 ? 'is-available' : 'is-empty' ?>">
+                            <?= (int)$item['quantity_on_hand'] ?> available
+                        </span>
+                    </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick='addEstimateLine(<?= json_encode(["id"=>$item["id"],"label"=>$item["name"],"price"=>$item["rental_price"],"cost"=>$item["unit_cost"],"type"=>"inventory"]) ?>)'>+</button>
+                <button type="button" class="btn btn-sm btn-primary" aria-label="Add <?= e($item['name']) ?>"
+                    onclick='addEstimateLine(<?= json_encode([
+                        "id" => (int)$item["id"],
+                        "label" => $item["name"],
+                        "price" => (float)$item["unit_cost"],
+                        "cost" => (float)$item["unit_cost"],
+                        "available" => (int)$item["quantity_on_hand"],
+                        "type" => "inventory"
+                    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>+</button>
             </div>
             <?php endforeach; ?>
             </div>
@@ -176,17 +198,59 @@ $totals = calculateEstimateTotals($lines, $d);
         <div class="card">
             <h3 class="mb-1">Line Items</h3>
             <div class="table-wrap">
-            <table class="data-table">
-                <tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th><th></th></tr>
+            <table class="data-table estimate-lines-table">
+                <thead><tr><th>Item</th><th>Use / Available</th><th>Contract Rate</th><th>Amount</th><th></th></tr></thead>
                 <tbody id="estimate-lines">
                 <?php foreach ($lines as $line): ?>
-                <tr>
+                <?php
+                    $isInventory = !empty($line['inventory_item_id']);
+                    $available = $isInventory && $line['inventory_available'] !== null
+                        ? (int)$line['inventory_available']
+                        : null;
+                    $purchaseCost = $isInventory && $line['inventory_purchase_cost'] !== null
+                        ? (float)$line['inventory_purchase_cost']
+                        : (float)$line['unit_cost'];
+                    $isOverride = $isInventory && abs((float)$line['unit_price'] - $purchaseCost) > 0.0001;
+                ?>
+                <tr class="estimate-line-row" data-inventory-id="<?= (int)($line['inventory_item_id'] ?? 0) ?>"
+                    data-available="<?= $available !== null ? $available : '' ?>"
+                    data-source-rate="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
                     <td><input type="hidden" name="line_inventory_id[]" value="<?= e($line['inventory_item_id']) ?>">
                         <input type="hidden" name="line_type[]" value="<?= e($line['line_type']) ?>">
-                        <input type="hidden" name="line_cost[]" value="<?= $line['unit_cost'] ?>">
-                        <input type="text" name="line_label[]" value="<?= e($line['label']) ?>" class="line-label"></td>
-                    <td><input type="number" name="line_qty[]" value="<?= $line['quantity'] ?>" class="line-qty" onchange="updateEstimateTotal()"></td>
-                    <td><input type="number" step="0.01" name="line_price[]" value="<?= $line['unit_price'] ?>" class="line-price" onchange="updateEstimateTotal()"></td>
+                        <input type="hidden" name="line_cost[]" value="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
+                        <input type="text" name="line_label[]" value="<?= e($line['label']) ?>" class="line-label">
+                        <?php if ($isInventory): ?>
+                            <small class="estimate-source-note">From inventory · purchase cost <?= formatMoney($purchaseCost) ?></small>
+                        <?php else: ?>
+                            <small class="estimate-source-note">Custom contract line</small>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div class="estimate-usage">
+                            <input type="number" name="line_qty[]" value="<?= e((string)$line['quantity']) ?>"
+                                min="0" step="0.5" class="line-qty" oninput="updateEstimateTotal()">
+                            <?php if ($available !== null): ?>
+                                <span class="usage-count"><strong><?= e((string)$line['quantity']) ?></strong> of <?= $available ?></span>
+                                <span class="usage-track"><span></span></span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="estimate-rate-field">
+                            <input type="number" step="0.01" min="0" name="line_price[]"
+                                value="<?= e(number_format((float)$line['unit_price'], 2, '.', '')) ?>"
+                                class="line-price" oninput="updateEstimateTotal()">
+                            <?php if ($isInventory): ?>
+                                <div class="rate-source">
+                                    <span>Purchase <?= formatMoney($purchaseCost) ?></span>
+                                    <button type="button" class="rate-reset" onclick="resetEstimateRate(this)">Reset</button>
+                                </div>
+                                <span class="rate-status <?= $isOverride ? 'is-overridden' : '' ?>">
+                                    <?= $isOverride ? 'Overridden for contract' : 'Using purchase cost' ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
                     <td class="line-amount text-right"><?= formatMoney($line['quantity'] * $line['unit_price']) ?></td>
                     <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove();updateEstimateTotal()">×</button></td>
                 </tr>
@@ -218,12 +282,6 @@ $totals = calculateEstimateTotals($lines, $d);
 </form>
 
 <script>
-function filterCatalog(q) {
-    q = q.toLowerCase();
-    document.querySelectorAll('#catalog-list .catalog-item').forEach(function(el) {
-        el.style.display = el.dataset.name.includes(q) ? '' : 'none';
-    });
-}
 function filterEstimateEvents() {
     var customer = document.querySelector('select[name="customer_id"]');
     var eventSel = document.getElementById('estimate_event_id');
@@ -237,7 +295,6 @@ function filterEstimateEvents() {
     });
 }
 document.addEventListener('DOMContentLoaded', function () {
-    updateEstimateTotal();
     var customer = document.querySelector('select[name="customer_id"]');
     if (customer) customer.addEventListener('change', filterEstimateEvents);
     filterEstimateEvents();

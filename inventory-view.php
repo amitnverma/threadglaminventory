@@ -41,7 +41,7 @@ require_once __DIR__ . '/includes/header.php';
         <p class="subtitle"><code><?= e($item['sku']) ?></code><?php if ($item['category_name']): ?> · <?= e($item['category_name']) ?><?php endif; ?></p>
     </div>
     <div class="flex">
-        <a href="purchases.php?item=<?= $id ?>" class="btn btn-secondary">+ Purchase Stock</a>
+        <a href="inventory-buy.php?item=<?= $id ?>" class="btn btn-secondary">+ Buy / Restock</a>
         <a href="inventory-form.php?id=<?= $id ?>" class="btn btn-primary">Edit</a>
         <form method="post" action="inventory.php" onsubmit="return confirm('Delete this item?')">
             <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $id ?>">

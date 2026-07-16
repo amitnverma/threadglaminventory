@@ -1,0 +1,224 @@
+/* Estimate builder: inventory-sourced values with clear contract overrides. */
+
+.estimate-layout {
+    grid-template-columns: minmax(230px, 270px) minmax(520px, 1fr) minmax(230px, 255px);
+    gap: 1rem;
+    align-items: start;
+}
+
+.estimate-layout > .card {
+    padding: 1rem;
+}
+
+.catalog-item {
+    gap: .6rem;
+    padding: .5rem;
+}
+
+.catalog-item img {
+    width: 38px;
+    height: 38px;
+}
+
+.catalog-item-info strong {
+    white-space: normal;
+    line-height: 1.25;
+}
+
+.catalog-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .15rem .5rem;
+    margin-top: .15rem;
+    color: var(--muted);
+    font-size: .7rem;
+    line-height: 1.2;
+}
+
+.catalog-item-meta .is-cost {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.catalog-item-meta .is-available {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.catalog-item-meta .is-empty {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.estimate-lines-table {
+    table-layout: fixed;
+    min-width: 620px;
+}
+
+.estimate-lines-table th,
+.estimate-lines-table td {
+    padding: .55rem .5rem !important;
+}
+
+.estimate-lines-table th:nth-child(1) { width: 28%; }
+.estimate-lines-table th:nth-child(2) { width: 21%; }
+.estimate-lines-table th:nth-child(3) { width: 27%; }
+.estimate-lines-table th:nth-child(4) { width: 16%; text-align: right; }
+.estimate-lines-table th:nth-child(5) { width: 8%; }
+
+.estimate-line-row {
+    transition: background-color .2s, box-shadow .2s;
+}
+
+.estimate-line-row.is-highlighted {
+    animation: estimate-row-highlight 1.15s ease-out;
+}
+
+@keyframes estimate-row-highlight {
+    0% { background: #ede9fe; box-shadow: inset 3px 0 var(--primary); }
+    100% { background: transparent; box-shadow: inset 3px 0 transparent; }
+}
+
+.estimate-lines-table input {
+    padding: .42rem .5rem;
+    border-radius: 6px;
+    font-size: .82rem;
+}
+
+.estimate-lines-table .line-label {
+    font-weight: 600;
+}
+
+.estimate-source-note {
+    display: block;
+    margin-top: .2rem;
+    color: var(--muted);
+    font-size: .68rem;
+    line-height: 1.2;
+}
+
+.estimate-usage {
+    display: grid;
+    grid-template-columns: 3.8rem 1fr;
+    align-items: center;
+    gap: .25rem .45rem;
+}
+
+.estimate-usage .line-qty {
+    grid-row: 1 / span 2;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.usage-count {
+    color: var(--muted);
+    font-size: .68rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.usage-count strong {
+    color: var(--text);
+}
+
+.usage-track {
+    display: block;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.usage-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--success);
+    transition: width .18s ease, background .18s ease;
+}
+
+.estimate-usage.is-over .usage-count,
+.estimate-usage.is-over .usage-count strong {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.estimate-usage.is-over .usage-track span {
+    background: var(--danger);
+}
+
+.estimate-rate-field .line-price {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.rate-source {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .35rem;
+    margin-top: .18rem;
+    color: var(--muted);
+    font-size: .67rem;
+    line-height: 1.2;
+}
+
+.rate-reset {
+    width: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rate-reset:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.rate-status {
+    display: block;
+    margin-top: .18rem;
+    color: var(--success);
+    font-size: .65rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.rate-status.is-overridden {
+    color: var(--warning);
+}
+
+.estimate-lines-table .line-amount {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.estimate-lines-table td:last-child .btn-danger {
+    padding: .28rem .45rem;
+}
+
+@media (max-width: 1180px) {
+    .estimate-layout {
+        grid-template-columns: minmax(210px, 245px) minmax(500px, 1fr);
+    }
+
+    .estimate-layout > .card:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 900px) {
+    .estimate-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .estimate-layout > .card:last-child {
+        grid-column: auto;
+    }
+}

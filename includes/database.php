@@ -39,3 +39,24 @@ function lastId(): string
 {
     return db()->lastInsertId();
 }
+
+function dbBegin(): void
+{
+    if (!db()->inTransaction()) {
+        db()->beginTransaction();
+    }
+}
+
+function dbCommit(): void
+{
+    if (db()->inTransaction()) {
+        db()->commit();
+    }
+}
+
+function dbRollback(): void
+{
+    if (db()->inTransaction()) {
+        db()->rollBack();
+    }
+}

@@ -58,7 +58,10 @@ $values = [
         <h1><?= $item ? 'Edit Decor Item' : 'Add Decor Purchase' ?></h1>
         <p class="subtitle">Purchases become Decor-owned stock you can reserve to events or hand off to master inventory</p>
     </div>
-    <a href="decor-inventory.php" class="btn btn-secondary">Back to Decor Inventory</a>
+    <div class="flex">
+        <a href="decor-inventory-buy.php" class="btn btn-secondary">Buy many items</a>
+        <a href="decor-inventory.php" class="btn btn-secondary">Back to Decor Inventory</a>
+    </div>
 </div>
 
 <?php if ($item): ?>

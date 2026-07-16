@@ -41,7 +41,7 @@ $contracts = query('SELECT c.*, cu.name as customer_name, e.title as event_title
             <?php foreach ($contracts as $c): ?>
             <tr>
                 <td><strong><?= e($c['title']) ?></strong></td>
-                <td><?= e($c['customer_name']) ?></td>
+                <td><a href="customer-view.php?id=<?= (int)$c['customer_id'] ?>"><?= e($c['customer_name']) ?></a></td>
                 <td><?= e($c['event_title'] ?: '—') ?></td>
                 <td><span class="badge badge-<?= e($c['status']) ?>"><?= e(ucfirst($c['status'])) ?></span></td>
                 <td><?= formatDate($c['updated_at']) ?></td>

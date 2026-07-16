@@ -44,7 +44,7 @@ $events = query("SELECT e.*, c.name as customer_name FROM events e JOIN customer
                 <td><a href="event-view.php?id=<?= $ev['id'] ?>"><strong><?= e($ev['title']) ?></strong></a>
                     <?php if ($ev['ceremony_type']): ?><br><span class="text-muted"><?= e($ev['ceremony_type']) ?></span><?php endif; ?>
                 </td>
-                <td><?= e($ev['customer_name']) ?></td>
+                <td><a href="customer-view.php?id=<?= (int)$ev['customer_id'] ?>"><?= e($ev['customer_name']) ?></a></td>
                 <td><?= formatDate($ev['event_date']) ?></td>
                 <td><?= e($ev['venue'] ?: '—') ?></td>
                 <td><span class="badge badge-<?= e($ev['status']) ?>"><?= e(ucfirst($ev['status'])) ?></span></td>

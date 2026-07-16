@@ -35,7 +35,7 @@ $estimates = query('SELECT e.*, c.name as customer_name, ev.title as event_title
             <?php foreach ($estimates as $est): ?>
             <tr>
                 <td><strong><?= e($est['title']) ?></strong></td>
-                <td><?= e($est['customer_name']) ?></td>
+                <td><a href="customer-view.php?id=<?= (int)$est['customer_id'] ?>"><?= e($est['customer_name']) ?></a></td>
                 <td><?= e($est['event_title'] ?: '—') ?></td>
                 <td><span class="badge badge-<?= e($est['status']) ?>"><?= e(ucfirst($est['status'])) ?></span></td>
                 <td><strong><?= formatMoney($est['total']) ?></strong></td>

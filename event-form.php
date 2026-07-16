@@ -6,6 +6,7 @@ $id = $_GET['id'] ?? null;
 $customers = query('SELECT * FROM customers WHERE deleted_at IS NULL ORDER BY name');
 $event = $id ? queryOne('SELECT * FROM events WHERE id=? AND deleted_at IS NULL', [$id]) : null;
 $ceremonyTypes = getCeremonyTypes();
+$preselectCustomer = (int)($_GET['customer_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['new_customer_name'])) {
@@ -28,13 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $currentPage = 'events';
 $pageTitle = $id ? 'Edit Event' : 'New Event';
 require_once __DIR__ . '/includes/header.php';
-$d = $event ?: ['customer_id'=>'','title'=>'','ceremony_type'=>'','event_date'=>'','end_date'=>'','venue'=>'','status'=>'inquiry','internal_notes'=>'','archived'=>0];
+$d = $event ?: ['customer_id'=>$preselectCustomer ?: '','title'=>'','ceremony_type'=>'','event_date'=>'','end_date'=>'','venue'=>'','status'=>'inquiry','internal_notes'=>'','archived'=>0];
 $statuses = ['inquiry','estimated','confirmed','completed','cancelled'];
+$backUrl = $preselectCustomer ? ('customer-view.php?id=' . $preselectCustomer . '&tab=events') : 'events.php';
 ?>
 
 <div class="page-header">
     <h1><?= $id ? 'Edit' : 'New' ?> Event</h1>
-    <a href="events.php" class="btn btn-secondary">← Back</a>
+    <a href="<?= e($backUrl) ?>" class="btn btn-secondary">← Back</a>
 </div>
 
 <div class="card" style="max-width:680px">
@@ -43,7 +45,7 @@ $statuses = ['inquiry','estimated','confirmed','completed','cancelled'];
             <select name="customer_id" required><option value="">Select customer</option>
             <?php foreach ($customers as $c): ?><option value="<?= $c['id'] ?>" <?= $d['customer_id']==$c['id']?'selected':'' ?>><?= e($c['name']) ?></option><?php endforeach; ?>
             </select>
-            <p class="hint"><a href="customers.php">Manage customers</a> or add inline below</p>
+            <p class="hint"><a href="customers.php">Browse customers</a> or add inline below</p>
         </div>
         <details class="mb-1"><summary class="text-muted" style="cursor:pointer;font-weight:500">+ Add new customer inline</summary>
             <div class="form-row mt-1">
@@ -73,7 +75,7 @@ $statuses = ['inquiry','estimated','confirmed','completed','cancelled'];
         <div class="form-group"><label>Venue</label><input name="venue" value="<?= e($d['venue']) ?>" placeholder="Venue name and address"></div>
         <div class="form-group"><label>Internal Notes</label><textarea name="internal_notes" placeholder="Theme preferences, guest count, special requirements"><?= e($d['internal_notes']) ?></textarea></div>
         <?php if ($id): ?><label><input type="checkbox" name="archived" value="1" <?= $d['archived']?'checked':'' ?>> Archive this event</label><?php endif; ?>
-        <div class="flex mt-1"><button class="btn btn-primary">Save Event</button><a href="events.php" class="btn btn-secondary">Cancel</a></div>
+        <div class="flex mt-1"><button class="btn btn-primary">Save Event</button><a href="<?= e($backUrl) ?>" class="btn btn-secondary">Cancel</a></div>
     </form>
 </div>
 

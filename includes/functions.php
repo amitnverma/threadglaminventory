@@ -286,6 +286,192 @@ function reversePurchaseInventory(int $purchaseId): void
     }
 }
 
+/**
+ * Save a multi-line purchase and update inventory atomically.
+ *
+ * @param array{supplier?:?string,purchase_date?:string,notes?:?string} $header
+ * @param list<array{mode?:string,inventory_item_id?:int,name?:string,category_id?:?int,qty?:int,unit_cost?:float}> $lines
+ * @return array{ok:bool,purchase_id:?int,items_updated:int,error:?string}
+ */
+function savePurchaseWithLines(array $header, array $lines): array
+{
+    $supplier = trim((string)($header['supplier'] ?? ''));
+    $purchaseDate = trim((string)($header['purchase_date'] ?? date('Y-m-d')));
+    if ($purchaseDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $purchaseDate)) {
+        return ['ok' => false, 'purchase_id' => null, 'items_updated' => 0, 'error' => 'Purchase date is required.'];
+    }
+    $notes = trim((string)($header['notes'] ?? '')) ?: null;
+    $reasonSupplier = $supplier !== '' ? $supplier : 'Supplier';
+    $reason = 'Purchase from ' . $reasonSupplier . ' on ' . $purchaseDate;
+
+    $normalized = [];
+    foreach ($lines as $line) {
+        $qty = max(1, (int)($line['qty'] ?? 1));
+        $cost = max(0, (float)($line['unit_cost'] ?? 0));
+        $mode = ($line['mode'] ?? '') === 'existing' || !empty($line['inventory_item_id']) ? 'existing' : 'new';
+        $invId = (int)($line['inventory_item_id'] ?? 0);
+        $name = trim((string)($line['name'] ?? ''));
+        $catId = isset($line['category_id']) && $line['category_id'] !== '' && $line['category_id'] !== null
+            ? (int)$line['category_id']
+            : null;
+        if ($catId !== null && $catId <= 0) {
+            $catId = null;
+        }
+
+        if ($mode === 'existing') {
+            if ($invId <= 0 && $name !== '') {
+                $match = queryOne(
+                    'SELECT id FROM inventory_items WHERE deleted_at IS NULL AND LOWER(name)=LOWER(?) LIMIT 1',
+                    [$name]
+                );
+                $invId = $match ? (int)$match['id'] : 0;
+            }
+            if ($invId <= 0) {
+                continue;
+            }
+            $normalized[] = [
+                'mode' => 'existing',
+                'inventory_item_id' => $invId,
+                'name' => $name,
+                'category_id' => $catId,
+                'qty' => $qty,
+                'unit_cost' => $cost,
+            ];
+        } else {
+            if ($name === '') {
+                continue;
+            }
+            $normalized[] = [
+                'mode' => 'new',
+                'inventory_item_id' => 0,
+                'name' => $name,
+                'category_id' => $catId,
+                'qty' => $qty,
+                'unit_cost' => $cost,
+            ];
+        }
+    }
+
+    if (empty($normalized)) {
+        return ['ok' => false, 'purchase_id' => null, 'items_updated' => 0, 'error' => 'Add at least one inventory item to the purchase.'];
+    }
+
+    try {
+        dbBegin();
+
+        execute(
+            'INSERT INTO purchases (supplier, purchase_date, total, notes) VALUES (?,?,?,?)',
+            [$supplier !== '' ? $supplier : null, $purchaseDate, 0, $notes]
+        );
+        $purchaseId = (int)lastId();
+        $total = 0.0;
+        $itemsUpdated = 0;
+
+        foreach ($normalized as $line) {
+            $qty = $line['qty'];
+            $cost = $line['unit_cost'];
+            $lineTotal = $qty * $cost;
+            $invId = null;
+            $label = '';
+
+            if ($line['mode'] === 'new') {
+                $invId = createInventoryFromPurchase($line['name'], $qty, $cost, $line['category_id'], $reason);
+                $label = $line['name'];
+                $itemsUpdated++;
+            } else {
+                $invId = (int)$line['inventory_item_id'];
+                $item = queryOne('SELECT name FROM inventory_items WHERE id=? AND deleted_at IS NULL', [$invId]);
+                if (!$item) {
+                    continue;
+                }
+                $label = $item['name'];
+                addInventoryStock($invId, $qty, $cost, $reason);
+                $itemsUpdated++;
+            }
+
+            $total += $lineTotal;
+            execute(
+                'INSERT INTO purchase_line_items (purchase_id,inventory_item_id,label,quantity,unit_cost,line_total) VALUES (?,?,?,?,?,?)',
+                [$purchaseId, $invId, $label, $qty, $cost, $lineTotal]
+            );
+        }
+
+        if ($itemsUpdated === 0) {
+            dbRollback();
+            return ['ok' => false, 'purchase_id' => null, 'items_updated' => 0, 'error' => 'Add at least one inventory item to the purchase.'];
+        }
+
+        execute('UPDATE purchases SET total=? WHERE id=?', [$total, $purchaseId]);
+        dbCommit();
+
+        return ['ok' => true, 'purchase_id' => $purchaseId, 'items_updated' => $itemsUpdated, 'error' => null];
+    } catch (Throwable $e) {
+        dbRollback();
+        return ['ok' => false, 'purchase_id' => null, 'items_updated' => 0, 'error' => 'Could not save purchase. Please try again.'];
+    }
+}
+
+/**
+ * Batch-update inventory catalog fields (not stock qty — use adjustments/purchases for that).
+ *
+ * @param list<array{id:int,name?:string,category_id?:?int,unit_cost?:float,rental_price?:float,sale_price?:float}> $rows
+ * @return array{ok:bool,updated:int,error:?string}
+ */
+function updateInventorySheetRows(array $rows): array
+{
+    $updated = 0;
+    try {
+        dbBegin();
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $existing = queryOne(
+                'SELECT id, category_id, unit_cost, rental_price, sale_price FROM inventory_items WHERE id=? AND deleted_at IS NULL',
+                [$id]
+            );
+            if (!$existing) {
+                continue;
+            }
+
+            $name = trim((string)($row['name'] ?? ''));
+            if ($name === '') {
+                dbRollback();
+                return ['ok' => false, 'updated' => 0, 'error' => 'Item name cannot be empty.'];
+            }
+
+            $catId = array_key_exists('category_id', $row)
+                ? (($row['category_id'] === '' || $row['category_id'] === null) ? null : (int)$row['category_id'])
+                : ($existing['category_id'] !== null ? (int)$existing['category_id'] : null);
+            if ($catId !== null && $catId <= 0) {
+                $catId = null;
+            }
+
+            $unitCost = array_key_exists('unit_cost', $row)
+                ? max(0, (float)$row['unit_cost'])
+                : (float)$existing['unit_cost'];
+            $rental = array_key_exists('rental_price', $row)
+                ? max(0, (float)$row['rental_price'])
+                : (float)$existing['rental_price'];
+            $sale = array_key_exists('sale_price', $row)
+                ? max(0, (float)$row['sale_price'])
+                : (float)$existing['sale_price'];
+
+            execute(
+                'UPDATE inventory_items SET name=?, category_id=?, unit_cost=?, rental_price=?, sale_price=?, updated_at=NOW() WHERE id=?',
+                [$name, $catId, $unitCost, $rental, $sale, $id]
+            );
+            $updated++;
+        }
+        dbCommit();
+        return ['ok' => true, 'updated' => $updated, 'error' => null];
+    } catch (Throwable $e) {
+        dbRollback();
+        return ['ok' => false, 'updated' => 0, 'error' => 'Could not save inventory changes.'];
+    }
+}
+
 function getCeremonyTypes(): array
 {
     $settings = getSettings();

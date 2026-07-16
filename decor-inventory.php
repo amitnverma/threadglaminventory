@@ -60,21 +60,54 @@ $categories = query('SELECT id, name FROM inventory_categories ORDER BY name');
 $inventoryOptions = query(
     'SELECT id, name, sku, quantity_on_hand FROM inventory_items WHERE deleted_at IS NULL ORDER BY name'
 );
+$handoffableItems = array_values(array_filter($items, static function ($row) {
+    return decorInventoryIsHandoffable($row) && (int)$row['available_qty'] > 0;
+}));
+
+$gridRows = array_map(static function ($row) {
+    $returned = (int)$row['is_returned'] === 1;
+    if ($returned) {
+        $status = '<span class="badge badge-draft">Returned</span>';
+    } elseif ((int)$row['handed_off_qty'] > 0) {
+        $status = '<span class="badge badge-approved">Handoffs ' . (int)$row['handed_off_qty'] . '</span>';
+    } elseif ((int)$row['quantity_on_hand'] > 0) {
+        $status = '<span class="badge badge-sent">In stock</span>';
+    } else {
+        $status = '<span class="badge badge-draft">Depleted</span>';
+    }
+
+    return [
+        'id' => (int)$row['id'],
+        'name' => $row['name'],
+        'purchased_from' => $row['purchased_from'] ?? '',
+        'purchase_date' => $row['purchase_date'],
+        'quantity' => (int)$row['quantity'],
+        'quantity_on_hand' => (int)$row['quantity_on_hand'],
+        'available_qty' => (int)$row['available_qty'],
+        'unit_price' => (float)$row['unit_price'],
+        'default_markup_percent' => (float)$row['default_markup_percent'],
+        'is_returned' => $returned ? 1 : 0,
+        'status_label' => $status,
+    ];
+}, $items);
 
 $currentPage = 'decor-inventory';
 $pageTitle = 'Decor Inventory';
 $loadDecorInventory = true;
+$loadInventorySheet = true;
+$pageScripts = ['assets/js/decor-inventory-grid.js'];
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<div class="page-header">
+<div class="page-header inv-sheet-page">
     <div>
         <h1>Decor Inventory</h1>
-        <p class="subtitle">Owned stock, spending, and selective handoff to master inventory</p>
+        <p class="subtitle">Editable stock sheet — buy many items at once, hand off when ready</p>
     </div>
     <div class="flex">
         <a href="decor-events.php" class="btn btn-secondary">Event proposals</a>
-        <a href="decor-inventory-form.php" class="btn btn-primary">+ Add purchase</a>
+        <a href="decor-inventory-form.php" class="btn btn-secondary">Advanced add</a>
+        <a href="decor-inventory-buy.php" class="btn btn-primary">Buy items</a>
     </div>
 </div>
 
@@ -121,11 +154,35 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </form>
 
+<?php if (empty($items)): ?>
+<div class="card">
+    <div class="empty-state">
+        <div class="icon">🧶</div>
+        <h3>No Decor purchases yet</h3>
+        <p>Record a multi-item receipt to build owned Decor stock.</p>
+        <a href="decor-inventory-buy.php" class="btn btn-primary">Buy items</a>
+    </div>
+</div>
+<?php else: ?>
+<div class="card inv-sheet-card">
+    <div class="inv-sheet-toolbar">
+        <span class="inv-sheet-hint">Edit cells inline. Use ⋯ for notes/returns details. Save when done.</span>
+        <span class="spacer"></span>
+        <span class="inv-sheet-status" id="decor-grid-status">All saved</span>
+        <button type="button" class="btn btn-primary btn-sm" id="decor-grid-save" disabled>Save changes</button>
+    </div>
+    <div id="decor-edit-sheet"></div>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($handoffableItems)): ?>
 <form method="post" id="decor-transfer-form">
     <?= csrfField() ?>
     <input type="hidden" name="action" value="transfer">
 
     <div class="card">
+        <h3>Hand off to master inventory</h3>
+        <p class="text-muted mb-1">Select free Decor stock to create or restock master inventory items.</p>
         <div class="decor-bulk-bar">
             <label class="checkbox-inline">
                 <input type="checkbox" id="decor-select-all"> Select all with free stock
@@ -134,94 +191,31 @@ require_once __DIR__ . '/includes/header.php';
             <button type="button" class="btn btn-primary" id="decor-open-transfer" disabled>Hand off selected…</button>
         </div>
 
-        <?php if (empty($items)): ?>
-            <div class="empty-state">
-                <div class="icon">🧶</div>
-                <h3>No Decor purchases yet</h3>
-                <p>Record purchases to build owned Decor stock. Reserve items to events from Event proposals.</p>
-                <a href="decor-inventory-form.php" class="btn btn-primary">Add first purchase</a>
-            </div>
-        <?php else: ?>
         <div class="table-wrap">
             <table class="data-table decor-table">
                 <thead>
                     <tr>
                         <th></th>
                         <th>Item</th>
-                        <th>Where</th>
-                        <th>Date</th>
-                        <th>Bought</th>
-                        <th>Owned</th>
-                        <th>Reserved</th>
                         <th>Free</th>
-                        <th>Cost</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th>Unit cost</th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php foreach ($items as $row):
-                    $handoffable = decorInventoryIsHandoffable($row) && (int)$row['available_qty'] > 0;
-                    $returned = (int)$row['is_returned'] === 1;
+                <?php foreach ($handoffableItems as $row):
                     $free = (int)$row['available_qty'];
                 ?>
-                    <tr class="<?= $returned ? 'decor-row-returned' : ((int)$row['quantity_on_hand'] === 0 ? 'decor-row-transferred' : '') ?>">
+                    <tr>
                         <td>
-                            <?php if ($handoffable): ?>
-                                <input type="checkbox" class="decor-item-check" name="ids[]" value="<?= (int)$row['id'] ?>"
-                                    data-free="<?= $free ?>">
-                            <?php endif; ?>
+                            <input type="checkbox" class="decor-item-check" name="ids[]" value="<?= (int)$row['id'] ?>"
+                                data-free="<?= $free ?>">
                         </td>
-                        <td>
-                            <strong><?= e($row['name']) ?></strong>
-                            <?php if (!empty($row['description'])): ?>
-                                <div class="text-muted decor-desc"><?= e($row['description']) ?></div>
-                            <?php endif; ?>
-                            <div class="hint">Markup default <?= e(number_format((float)$row['default_markup_percent'], 1)) ?>%</div>
-                        </td>
-                        <td><?= e($row['purchased_from'] ?: '—') ?></td>
-                        <td><?= e(formatDate($row['purchase_date'])) ?></td>
-                        <td><?= (int)$row['quantity'] ?></td>
-                        <td><?= (int)$row['quantity_on_hand'] ?></td>
-                        <td><?= (int)$row['reserved_qty'] ?></td>
+                        <td><strong><?= e($row['name']) ?></strong></td>
                         <td><strong><?= $free ?></strong></td>
-                        <td>
-                            <?= e(formatMoney($row['unit_price'])) ?>
-                            <div class="hint"><?= e(formatMoney($row['line_total'])) ?> total</div>
-                        </td>
-                        <td>
-                            <?php if ($returned): ?>
-                                <span class="badge badge-draft">Returned</span>
-                                <div class="hint">Refund <?= e(formatMoney($row['refund_amount'])) ?></div>
-                            <?php elseif ((int)$row['handed_off_qty'] > 0): ?>
-                                <span class="badge badge-approved">Handoffs <?= (int)$row['handed_off_qty'] ?></span>
-                                <?php if ((int)$row['quantity_on_hand'] > 0): ?>
-                                    <div class="hint">Still owns <?= (int)$row['quantity_on_hand'] ?></div>
-                                <?php endif; ?>
-                            <?php elseif ((int)$row['quantity_on_hand'] > 0): ?>
-                                <span class="badge badge-sent">In stock</span>
-                            <?php else: ?>
-                                <span class="badge badge-draft">Depleted</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <div class="action-btns">
-                                <a href="decor-inventory-form.php?id=<?= (int)$row['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
-                                <?php if (!$returned): ?>
-                                <button type="button" class="btn btn-sm btn-secondary decor-return-btn"
-                                    data-id="<?= (int)$row['id'] ?>"
-                                    data-total="<?= e(number_format((float)$row['line_total'], 2, '.', '')) ?>">
-                                    Return
-                                </button>
-                                <button type="submit" form="decor-delete-<?= (int)$row['id'] ?>" class="btn btn-sm btn-danger"
-                                    onclick="return confirm('Delete this Decor purchase record?')">Delete</button>
-                                <?php endif; ?>
-                            </div>
-                        </td>
+                        <td><?= e(formatMoney($row['unit_price'])) ?></td>
                     </tr>
-                    <?php if ($handoffable): ?>
                     <tr class="decor-transfer-options" data-for="<?= (int)$row['id'] ?>" hidden>
-                        <td colspan="11">
+                        <td colspan="4">
                             <div class="decor-transfer-map">
                                 <strong>Handoff mapping for <?= e($row['name']) ?></strong>
                                 <div class="grid-3">
@@ -262,24 +256,13 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
                         </td>
                     </tr>
-                    <?php endif; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-        <?php endif; ?>
     </div>
 </form>
-
-<?php foreach ($items as $row):
-    if ((int)$row['is_returned'] === 1) continue;
-?>
-<form method="post" id="decor-delete-<?= (int)$row['id'] ?>" style="display:none">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="delete">
-    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-</form>
-<?php endforeach; ?>
+<?php endif; ?>
 
 <dialog id="decor-return-dialog" class="decor-dialog">
     <form method="post">
@@ -302,5 +285,13 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </form>
 </dialog>
+
+<script>
+window.DECOR_GRID = {
+    csrf: <?= json_encode(csrfToken(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+    apiUrl: 'decor-inventory-api.php',
+    rows: <?= json_encode($gridRows, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>
+};
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -393,6 +393,111 @@ function decorInventoryCreate(array $input): ?string
     return null;
 }
 
+/**
+ * Create many Decor purchase/stock rows sharing vendor + date (one receipt).
+ *
+ * @param array{purchased_from?:?string,purchase_date?:string,notes?:?string} $header
+ * @param list<array{name?:string,quantity?:int,unit_price?:float,default_markup_percent?:float,description?:?string}> $lines
+ * @return array{ok:bool,created:int,error:?string}
+ */
+function decorInventoryCreateMany(array $header, array $lines): array
+{
+    $purchaseDate = trim((string)($header['purchase_date'] ?? date('Y-m-d')));
+    $purchasedFrom = trim((string)($header['purchased_from'] ?? '')) ?: null;
+    $notes = trim((string)($header['notes'] ?? '')) ?: null;
+
+    $normalized = [];
+    foreach ($lines as $line) {
+        $name = trim((string)($line['name'] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+        $normalized[] = [
+            'name' => $name,
+            'description' => $line['description'] ?? null,
+            'purchased_from' => $purchasedFrom,
+            'purchase_date' => $purchaseDate,
+            'quantity' => (int)($line['quantity'] ?? 1),
+            'unit_price' => (float)($line['unit_price'] ?? 0),
+            'default_markup_percent' => (float)($line['default_markup_percent'] ?? 0),
+            'notes' => $notes,
+            'is_returned' => 0,
+        ];
+    }
+
+    if (empty($normalized)) {
+        return ['ok' => false, 'created' => 0, 'error' => 'Add at least one item row.'];
+    }
+
+    try {
+        dbBegin();
+        $created = 0;
+        foreach ($normalized as $input) {
+            $err = decorInventoryCreate($input);
+            if ($err) {
+                dbRollback();
+                return ['ok' => false, 'created' => 0, 'error' => $err];
+            }
+            $created++;
+        }
+        dbCommit();
+        return ['ok' => true, 'created' => $created, 'error' => null];
+    } catch (Throwable $e) {
+        dbRollback();
+        return ['ok' => false, 'created' => 0, 'error' => 'Could not save Decor purchases.'];
+    }
+}
+
+/**
+ * Inline grid field updates for Decor inventory.
+ *
+ * @param list<array{id:int,name?:string,purchased_from?:?string,purchase_date?:string,quantity?:int,unit_price?:float,default_markup_percent?:float}> $rows
+ * @return array{ok:bool,updated:int,error:?string}
+ */
+function decorInventoryUpdateFields(array $rows): array
+{
+    $updated = 0;
+    try {
+        dbBegin();
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $item = decorInventoryGet($id);
+            if (!$item) {
+                continue;
+            }
+
+            $payload = [
+                'name' => $row['name'] ?? $item['name'],
+                'description' => $item['description'],
+                'purchased_from' => array_key_exists('purchased_from', $row) ? $row['purchased_from'] : $item['purchased_from'],
+                'purchase_date' => $row['purchase_date'] ?? $item['purchase_date'],
+                'quantity' => $row['quantity'] ?? $item['quantity'],
+                'unit_price' => $row['unit_price'] ?? $item['unit_price'],
+                'default_markup_percent' => $row['default_markup_percent'] ?? $item['default_markup_percent'],
+                'is_returned' => (int)$item['is_returned'] === 1,
+                'returned_at' => $item['returned_at'],
+                'refund_amount' => $item['refund_amount'],
+                'notes' => $item['notes'],
+            ];
+
+            $err = decorInventoryUpdate($id, $payload);
+            if ($err) {
+                dbRollback();
+                return ['ok' => false, 'updated' => 0, 'error' => $err];
+            }
+            $updated++;
+        }
+        dbCommit();
+        return ['ok' => true, 'updated' => $updated, 'error' => null];
+    } catch (Throwable $e) {
+        dbRollback();
+        return ['ok' => false, 'updated' => 0, 'error' => 'Could not save Decor changes.'];
+    }
+}
+
 /** Returns error message or null on success. */
 function decorInventoryUpdate(int $id, array $input): ?string
 {

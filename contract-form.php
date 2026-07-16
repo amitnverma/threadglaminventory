@@ -6,6 +6,7 @@ $customers = query('SELECT id, name FROM customers WHERE deleted_at IS NULL ORDE
 $events = query('SELECT id, title, customer_id FROM events WHERE deleted_at IS NULL ORDER BY title');
 $estimates = query("SELECT id, title, customer_id, event_id FROM estimates WHERE is_template=0 AND status IN ('sent','approved') ORDER BY title");
 $settings = getSettings();
+$preselectCustomer = (int)($_GET['customer_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerId = (int)$_POST['customer_id'];
@@ -56,7 +57,7 @@ require_once __DIR__ . '/includes/header.php';
                 <select name="customer_id" id="contract-customer" required>
                     <option value="">Select customer</option>
                     <?php foreach ($customers as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= e($c['name']) ?></option>
+                    <option value="<?= $c['id'] ?>" <?= $preselectCustomer === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>

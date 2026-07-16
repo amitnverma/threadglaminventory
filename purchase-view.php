@@ -27,6 +27,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="flex">
         <a href="purchases.php" class="btn btn-secondary">← All Purchases</a>
         <form method="post" action="purchases.php" onsubmit="return confirm('Delete and reverse inventory stock?')">
+            <?= csrfField() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= $id ?>">
             <button class="btn btn-danger">Delete</button>

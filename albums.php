@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $view = $_GET['view'] ?? 'active';
 $q    = trim($_GET['q'] ?? '');
+$preselectCustomer = (int)($_GET['customer_id'] ?? 0);
 $filters = ['q' => $q];
 if ($view === 'templates')    { $filters['is_template'] = 1; $filters['status'] = 'active'; }
 elseif ($view === 'archived') { $filters['status'] = 'archived'; }
@@ -61,7 +62,7 @@ require_once __DIR__ . '/includes/header.php';
     <button type="button" class="btn btn-primary" onclick="document.getElementById('newAlbum').classList.toggle('show')">+ New Album</button>
 </div>
 
-<div class="card album-newbox" id="newAlbum">
+<div class="card album-newbox <?= $preselectCustomer ? 'show' : '' ?>" id="newAlbum">
     <h3>New album</h3>
     <form method="post">
         <input type="hidden" name="action" value="create">
@@ -76,7 +77,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="form-row">
             <div class="form-group"><label>Customer (optional)</label>
                 <select name="customer_id"><option value="">—</option>
-                    <?php foreach ($customers as $c): ?><option value="<?= $c['id'] ?>"><?= e($c['name']) ?></option><?php endforeach; ?>
+                    <?php foreach ($customers as $c): ?>
+                        <option value="<?= (int)$c['id'] ?>" <?= $preselectCustomer === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
+                    <?php endforeach; ?>
                 </select></div>
             <div class="form-group"><label>Event (optional)</label>
                 <select name="event_id"><option value="">—</option>

@@ -113,7 +113,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="grid-2">
     <div class="card">
         <h3>Event Details</h3>
-        <p><strong>Customer:</strong> <a href="customers.php?edit=<?= $event['customer_id'] ?>"><?= e($event['customer_name']) ?></a></p>
+        <p><strong>Customer:</strong> <a href="customer-view.php?id=<?= (int)$event['customer_id'] ?>"><?= e($event['customer_name']) ?></a></p>
         <p><strong>Phone:</strong> <?= e($event['customer_phone'] ?: '—') ?></p>
         <p><strong>Type:</strong> <?= e($event['ceremony_type'] ?: '—') ?></p>
         <p><strong>Date:</strong> <?= formatDate($event['event_date']) ?><?php if ($event['end_date']): ?> — <?= formatDate($event['end_date']) ?><?php endif; ?></p>

@@ -1,0 +1,466 @@
+/* Compact Excel-like inventory sheets — dense, readable, no clipped fields */
+
+.inv-sheet-page .page-header {
+    margin-bottom: .85rem;
+}
+
+.inv-sheet-page .page-header h1 {
+    font-size: 1.45rem;
+}
+
+.inv-sheet-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem .65rem;
+    margin-bottom: .55rem;
+}
+
+.inv-sheet-toolbar .spacer {
+    flex: 1;
+    min-width: .5rem;
+}
+
+.inv-sheet-hint {
+    color: var(--muted);
+    font-size: .78rem;
+    line-height: 1.35;
+    max-width: 52rem;
+}
+
+.inv-sheet-header-fields {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1.4fr) minmax(8.5rem, 10rem) minmax(10rem, 1.6fr);
+    gap: .55rem .75rem;
+    margin-bottom: .75rem;
+    align-items: end;
+}
+
+@media (max-width: 720px) {
+    .inv-sheet-header-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+.inv-sheet-header-fields .form-group {
+    margin: 0;
+}
+
+.inv-sheet-header-fields label {
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: .25rem;
+}
+
+.inv-sheet-header-fields input,
+.inv-sheet-card > .inv-sheet-header-fields input {
+    padding: .4rem .55rem;
+    font-size: .84rem;
+    border-radius: 6px;
+    min-height: 2rem;
+}
+
+.inv-sheet-wrap {
+    overflow: auto;
+    border: 1px solid #d8dee8;
+    border-radius: 6px;
+    background: #fff;
+    max-height: min(68vh, 640px);
+    -webkit-overflow-scrolling: touch;
+}
+
+.inv-sheet {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-size: .8125rem;
+    line-height: 1.25;
+    min-width: 860px;
+}
+
+.inv-sheet thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f3f5f9;
+    border-bottom: 1px solid #d8dee8;
+    border-right: 1px solid #e4e8ef;
+    padding: .35rem .45rem;
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #64748b;
+    white-space: nowrap;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inv-sheet thead th.is-right {
+    text-align: right;
+}
+
+.inv-sheet thead th:last-child {
+    border-right: 0;
+}
+
+.inv-sheet tbody td {
+    border-bottom: 1px solid #eef1f6;
+    border-right: 1px solid #eef1f6;
+    padding: 0;
+    vertical-align: middle;
+    background: #fff;
+    height: 1.85rem;
+    overflow: hidden;
+}
+
+.inv-sheet tbody td:last-child {
+    border-right: 0;
+}
+
+.inv-sheet tbody tr:nth-child(even) td {
+    background: #fafbfd;
+}
+
+.inv-sheet tbody tr:hover td {
+    background: #f4f7ff;
+}
+
+.inv-sheet tbody tr.is-dirty td {
+    background: #fff8e8;
+}
+
+.inv-sheet tbody tr.is-dirty:hover td {
+    background: #ffefc6;
+}
+
+.inv-sheet tbody tr.is-new-row td {
+    background: #f3fbf6;
+}
+
+/* Kill global form input chrome inside the grid */
+.inv-sheet .cell-input,
+.inv-sheet .cell-select,
+.inv-sheet .cell-readonly,
+.inv-sheet input.cell-input,
+.inv-sheet select.cell-select {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: .28rem .4rem !important;
+    font: inherit !important;
+    font-size: .8125rem !important;
+    color: var(--text);
+    min-height: 1.85rem;
+    height: 1.85rem;
+    line-height: 1.25;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.inv-sheet .cell-select {
+    padding-right: 1.1rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right .35rem center !important;
+    background-size: 8px 5px !important;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inv-sheet .cell-input:focus,
+.inv-sheet .cell-select:focus {
+    outline: none !important;
+    box-shadow: inset 0 0 0 2px var(--primary) !important;
+    background: #fff !important;
+    position: relative;
+    z-index: 2;
+}
+
+.inv-sheet .cell-input[type="number"],
+.inv-sheet .cell-input[type="date"] {
+    font-variant-numeric: tabular-nums;
+}
+
+.inv-sheet .cell-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.inv-sheet .cell-input[type="number"]::-webkit-outer-spin-button,
+.inv-sheet .cell-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.inv-sheet .cell-readonly {
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    min-height: 1.85rem;
+    height: 1.85rem;
+    padding: .28rem .4rem !important;
+}
+
+.inv-sheet .cell-money,
+.inv-sheet td.is-right .cell-input,
+.inv-sheet td.is-right .cell-readonly {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Column widths — item flexes; others stay readable */
+.inv-sheet .col-item {
+    width: auto;
+}
+
+.inv-sheet .col-cat {
+    width: 9.5rem;
+    min-width: 9.5rem;
+}
+
+.inv-sheet .col-store {
+    width: 8.5rem;
+}
+
+.inv-sheet .col-date {
+    width: 7.75rem;
+}
+
+.inv-sheet .col-sku {
+    width: 6.5rem;
+}
+
+.inv-sheet .col-qty {
+    width: 3.75rem;
+}
+
+.inv-sheet .col-money {
+    width: 5.75rem;
+}
+
+.inv-sheet .col-status {
+    width: 7.25rem;
+}
+
+.inv-sheet .col-actions {
+    width: 5.75rem;
+    white-space: nowrap;
+}
+
+.inv-sheet .col-actions-wide {
+    width: 7.25rem;
+}
+
+.inv-sheet .row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .15rem;
+    padding: 0 .25rem;
+    height: 1.85rem;
+}
+
+.inv-sheet .row-actions .btn,
+.inv-sheet .row-actions a.btn {
+    padding: .1rem .35rem !important;
+    font-size: .7rem !important;
+    line-height: 1.2;
+    min-height: 0;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.inv-sheet .row-actions .btn-danger,
+.inv-sheet .inv-sheet-remove {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    font-size: .95rem !important;
+    padding: .05rem .3rem !important;
+}
+
+.inv-sheet .row-actions .btn-danger:hover,
+.inv-sheet .inv-sheet-remove:hover {
+    color: var(--danger) !important;
+    background: #fef2f2 !important;
+}
+
+.inv-sheet-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .65rem;
+    margin-top: .75rem;
+    padding-top: .15rem;
+}
+
+.inv-sheet-footer .spacer {
+    flex: 1;
+}
+
+.inv-sheet-total {
+    font-weight: 600;
+    font-size: .875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.inv-sheet-total span {
+    color: var(--primary-dark);
+}
+
+.inv-sheet-status {
+    font-size: .78rem;
+    color: var(--muted);
+}
+
+.inv-sheet-status.is-dirty {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.inv-sheet-status.is-saved {
+    color: var(--success);
+}
+
+/* Typeahead — full cell width, menu overlays */
+.inv-typeahead {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.inv-typeahead .cell-input {
+    width: 100%;
+}
+
+.inv-typeahead-menu {
+    position: absolute;
+    left: 0;
+    right: auto;
+    min-width: 100%;
+    width: max(100%, 16rem);
+    top: 100%;
+    z-index: 30;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #d8dee8;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+}
+
+.inv-typeahead-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: #fff;
+    padding: .4rem .55rem;
+    font: inherit;
+    font-size: .8rem;
+    cursor: pointer;
+    color: var(--text);
+}
+
+.inv-typeahead-option:hover,
+.inv-typeahead-option.is-active {
+    background: var(--primary-light);
+}
+
+.inv-typeahead-option small {
+    display: block;
+    color: var(--muted);
+    font-size: .72rem;
+    margin-top: .1rem;
+}
+
+.inv-typeahead-empty {
+    padding: .45rem .55rem;
+    color: var(--muted);
+    font-size: .78rem;
+}
+
+.inv-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: .08rem .3rem;
+    border-radius: 3px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.inv-pill-restock {
+    color: var(--primary-dark);
+    background: var(--primary-light);
+}
+
+.inv-pill-new {
+    color: #047857;
+    background: #d1fae5;
+}
+
+.inv-sheet-card {
+    padding: .85rem 1rem 1rem;
+}
+
+.inv-low-qty {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.inv-sheet .sku-cell {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .75rem;
+    color: var(--muted);
+}
+
+.inv-sheet .badge {
+    font-size: .65rem;
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    text-transform: none;
+}
+
+.inv-sheet-page {
+    max-width: none;
+}
+
+/* Give spreadsheet pages more horizontal room */
+.content:has(.inv-sheet-wrap) {
+    max-width: min(100%, 1680px);
+}
+
+@media (max-width: 900px) {
+    .inv-sheet {
+        min-width: 780px;
+    }
+
+    .inv-sheet .col-cat {
+        width: 8.25rem;
+        min-width: 8.25rem;
+    }
+
+    .inv-sheet .col-status {
+        width: 6.5rem;
+    }
+}
