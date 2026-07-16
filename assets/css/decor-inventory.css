@@ -122,28 +122,61 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.35rem;
 }
 
 .decor-picker-item {
     display: flex;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
     align-items: center;
-    padding: 0.65rem 0.75rem;
+    padding: 0.4rem 0.55rem;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
+}
+
+.decor-picker-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.decor-picker-main strong {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.decor-picker-stock {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.decor-picker-stock.is-available {
+    color: var(--success);
+}
+
+.decor-picker-stock.is-empty {
+    color: var(--danger);
 }
 
 .decor-add-form {
     display: flex;
-    gap: 0.35rem;
+    gap: 0.3rem;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .decor-add-qty {
-    width: 4rem;
+    width: 3.25rem;
+    padding: 0.28rem 0.35rem;
+    font-size: 0.8rem;
 }
 
 #decor-proposal-lines input[type="number"],

@@ -144,30 +144,22 @@ require_once __DIR__ . '/includes/header.php';
 <div class="decor-event-layout">
     <div class="card">
         <h3>Add from Decor inventory</h3>
-        <p class="hint">Available = owned − overlapping reservations for these event dates.</p>
         <input type="search" id="decor-picker-search" class="mb-1" placeholder="Search stock…">
         <div class="decor-picker-list" id="decor-picker-list">
             <?php foreach ($picker as $item): ?>
             <div class="decor-picker-item" data-name="<?= e(strtolower($item['name'])) ?>">
-                <div>
+                <div class="decor-picker-main">
                     <strong><?= e($item['name']) ?></strong>
-                    <div class="hint">
-                        Owned <?= (int)$item['quantity_on_hand'] ?>
-                        · Reserved <?= (int)$item['reserved_qty'] ?>
-                        · <strong>Available <?= (int)$item['available_qty'] ?></strong>
-                    </div>
-                    <div class="hint">
-                        Cost <?= e(formatMoney($item['unit_price'])) ?>
-                        · Suggest <?= e(formatMoney($item['suggested_rate'])) ?>
-                        (<?= e(number_format((float)$item['default_markup_percent'], 1)) ?>%)
-                    </div>
+                    <span class="decor-picker-stock <?= (int)$item['available_qty'] > 0 ? 'is-available' : 'is-empty' ?>">
+                        <?= (int)$item['available_qty'] ?> in stock
+                    </span>
                 </div>
                 <?php if ((int)$item['available_qty'] > 0): ?>
                 <form method="post" class="decor-add-form">
                     <?= csrfField() ?>
                     <input type="hidden" name="action" value="add_item">
                     <input type="hidden" name="decor_item_id" value="<?= (int)$item['id'] ?>">
-                    <input type="number" name="quantity" value="1" min="1" max="<?= (int)$item['available_qty'] ?>" class="decor-add-qty">
+                    <input type="number" name="quantity" value="1" min="1" max="<?= (int)$item['available_qty'] ?>" class="decor-add-qty" aria-label="Quantity">
                     <button class="btn btn-sm btn-primary">Reserve</button>
                 </form>
                 <?php else: ?>
