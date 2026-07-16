@@ -16,4 +16,12 @@ return [
     // Optional: used only to seed the first admin account if the admins table is empty.
     // After that, manage logins in Admin Users. Leave empty to seed admin / admin123.
     'admin_password' => '',
+
+    // Bootstrap credentials for the hidden Decor owner account (created once if missing).
+    // Sign in only at decor-login.php. This account is never listed in Admin Users.
+    // After first login, change the password under Decor → Profile. You may clear the
+    // password here after the account exists; it will not be recreated.
+    'decor_owner_username' => 'decor',
+    'decor_owner_password' => 'change-me-now',
+    'decor_owner_display_name' => 'Decor Owner',
 ];

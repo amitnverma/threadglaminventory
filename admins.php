@@ -43,6 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $admins = adminUsersAll();
 $editId = (int)($_GET['edit'] ?? 0);
 $editUser = $editId ? adminUserGet($editId) : null;
+if ($editUser && adminIsDecorOwnerUser($editUser)) {
+    flash('error', 'This account cannot be managed here.');
+    redirect('admins.php');
+}
 
 $currentPage = 'admins';
 $pageTitle = 'Admin Users';

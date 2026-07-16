@@ -4,7 +4,7 @@ requireAuth();
 
 $id = $_GET['id'] ?? null;
 $customers = query('SELECT * FROM customers WHERE deleted_at IS NULL ORDER BY name');
-$events = query('SELECT id, title FROM events WHERE deleted_at IS NULL ORDER BY title');
+$events = query('SELECT id, title, customer_id FROM events WHERE deleted_at IS NULL ORDER BY title');
 $catalog = query('SELECT i.*, c.name as category_name FROM inventory_items i LEFT JOIN inventory_categories c ON c.id=i.category_id WHERE i.deleted_at IS NULL ORDER BY i.name');
 $settings = getSettings();
 
@@ -12,10 +12,43 @@ $estimate = $id ? queryOne('SELECT * FROM estimates WHERE id=?', [$id]) : null;
 $lines = $id ? query('SELECT * FROM estimate_line_items WHERE estimate_id=? ORDER BY sort_order', [$id]) : [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $customerId = (int)($_POST['customer_id'] ?? 0);
+    $eventId = !empty($_POST['event_id']) ? (int)$_POST['event_id'] : null;
+    $customer = $customerId
+        ? queryOne('SELECT id FROM customers WHERE id=? AND deleted_at IS NULL', [$customerId])
+        : null;
+    if (!$customer) {
+        flash('error', 'Select a valid customer.');
+        redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+    }
+    if ($eventId) {
+        $event = queryOne(
+            'SELECT id, customer_id FROM events WHERE id=? AND deleted_at IS NULL',
+            [$eventId]
+        );
+        if (!$event) {
+            flash('error', 'Selected event was not found.');
+            redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+        }
+        if ((int)$event['customer_id'] !== $customerId) {
+            flash('error', 'The selected event does not belong to that customer.');
+            redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+        }
+    }
+
+    // Preserve Decor-published source links when an admin re-saves a draft estimate.
+    $existingSources = [];
+    if ($id) {
+        foreach (query('SELECT id, sort_order, source_type, source_id FROM estimate_line_items WHERE estimate_id=? ORDER BY sort_order, id', [$id]) as $srcRow) {
+            $existingSources[] = $srcRow;
+        }
+    }
+
     $labels = $_POST['line_label'] ?? [];
     $lineData = [];
     for ($i = 0; $i < count($labels); $i++) {
         if (trim($labels[$i]) === '') continue;
+        $source = $existingSources[$i] ?? null;
         $lineData[] = [
             'line_type' => $_POST['line_type'][$i] ?? 'custom',
             'inventory_item_id' => $_POST['line_inventory_id'][$i] ?: null,
@@ -23,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'quantity' => (float)($_POST['line_qty'][$i] ?? 1),
             'unit_price' => (float)($_POST['line_price'][$i] ?? 0),
             'unit_cost' => (float)($_POST['line_cost'][$i] ?? 0),
+            'source_type' => $source['source_type'] ?? null,
+            'source_id' => $source['source_id'] ?? null,
         ];
     }
     $opts = ['tax_percent' => $_POST['tax_percent'], 'discount_type' => $_POST['discount_type'], 'discount_value' => $_POST['discount_value']];
@@ -30,17 +65,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id) {
         execute('UPDATE estimates SET customer_id=?,event_id=?,title=?,status=?,subtotal=?,tax_percent=?,tax_amount=?,discount_type=?,discount_value=?,discount_amount=?,total=?,notes=?,updated_at=NOW() WHERE id=?',
-            [$_POST['customer_id'], $_POST['event_id'] ?: null, $_POST['title'], $_POST['status'], $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null, $id]);
+            [$customerId, $eventId, $_POST['title'], $_POST['status'], $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null, $id]);
         execute('DELETE FROM estimate_line_items WHERE estimate_id=?', [$id]);
         $estId = $id;
     } else {
         execute('INSERT INTO estimates (customer_id,event_id,title,status,subtotal,tax_percent,tax_amount,discount_type,discount_value,discount_amount,total,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-            [$_POST['customer_id'], $_POST['event_id'] ?: null, $_POST['title'], $_POST['status'] ?? 'draft', $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null]);
+            [$customerId, $eventId, $_POST['title'], $_POST['status'] ?? 'draft', $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null]);
         $estId = lastId();
     }
+    // Ensure source columns exist (idempotent) for Decor-published lines.
+    try {
+        $cols = query("SHOW COLUMNS FROM estimate_line_items LIKE 'source_type'");
+        if (empty($cols)) {
+            execute("ALTER TABLE estimate_line_items ADD COLUMN source_type VARCHAR(32) NULL AFTER notes");
+            execute("ALTER TABLE estimate_line_items ADD COLUMN source_id INT NULL AFTER source_type");
+        }
+    } catch (Exception $e) {
+        // ignore
+    }
     foreach ($lineData as $i => $line) {
-        execute('INSERT INTO estimate_line_items (estimate_id,line_type,inventory_item_id,label,quantity,unit_price,unit_cost,sort_order) VALUES (?,?,?,?,?,?,?,?)',
-            [$estId, $line['line_type'], $line['inventory_item_id'], $line['label'], $line['quantity'], $line['unit_price'], $line['unit_cost'], $i]);
+        execute(
+            'INSERT INTO estimate_line_items
+                (estimate_id,line_type,inventory_item_id,label,quantity,unit_price,unit_cost,sort_order,source_type,source_id)
+             VALUES (?,?,?,?,?,?,?,?,?,?)',
+            [
+                $estId,
+                $line['line_type'],
+                $line['inventory_item_id'],
+                $line['label'],
+                $line['quantity'],
+                $line['unit_price'],
+                $line['unit_cost'],
+                $i,
+                $line['source_type'],
+                $line['source_id'],
+            ]
+        );
     }
     flash('success', 'Estimate saved.');
     redirect('estimate-form.php?id=' . $estId);
@@ -74,8 +134,14 @@ $totals = calculateEstimateTotals($lines, $d);
             </select>
         </div>
         <div class="form-group"><label>Event</label>
-            <select name="event_id"><option value="">—</option>
-            <?php foreach ($events as $ev): ?><option value="<?= $ev['id'] ?>" <?= $d['event_id']==$ev['id']?'selected':'' ?>><?= e($ev['title']) ?></option><?php endforeach; ?>
+            <select name="event_id" id="estimate_event_id"><option value="">—</option>
+            <?php foreach ($events as $ev): ?>
+                <option value="<?= (int)$ev['id'] ?>"
+                    data-customer="<?= (int)$ev['customer_id'] ?>"
+                    <?= (int)$d['event_id'] === (int)$ev['id'] ? 'selected' : '' ?>>
+                    <?= e($ev['title']) ?>
+                </option>
+            <?php endforeach; ?>
             </select>
         </div>
         <div class="form-group"><label>Status</label>
@@ -158,7 +224,24 @@ function filterCatalog(q) {
         el.style.display = el.dataset.name.includes(q) ? '' : 'none';
     });
 }
-document.addEventListener('DOMContentLoaded', updateEstimateTotal);
+function filterEstimateEvents() {
+    var customer = document.querySelector('select[name="customer_id"]');
+    var eventSel = document.getElementById('estimate_event_id');
+    if (!customer || !eventSel) return;
+    var cid = customer.value;
+    Array.prototype.forEach.call(eventSel.options, function (opt) {
+        if (!opt.value) { opt.hidden = false; return; }
+        var match = !cid || opt.getAttribute('data-customer') === cid;
+        opt.hidden = !match;
+        if (!match && opt.selected) eventSel.value = '';
+    });
+}
+document.addEventListener('DOMContentLoaded', function () {
+    updateEstimateTotal();
+    var customer = document.querySelector('select[name="customer_id"]');
+    if (customer) customer.addEventListener('change', filterEstimateEvents);
+    filterEstimateEvents();
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

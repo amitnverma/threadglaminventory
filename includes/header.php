@@ -14,6 +14,9 @@ $currentPage = $currentPage ?? '';
     <?php if (!empty($loadContractEditor)): ?>
     <link rel="stylesheet" href="assets/css/contract-editor.css">
     <?php endif; ?>
+    <?php if (!empty($loadDecorInventory) || !empty($loadDecorProposals)): ?>
+    <link rel="stylesheet" href="assets/css/decor-inventory.css">
+    <?php endif; ?>
 </head>
 <body>
 <div class="app">
@@ -24,9 +27,12 @@ $currentPage = $currentPage ?? '';
         </div>
         <nav>
             <?php
+            $navAdmin = currentAdmin();
+            $navIsDecorOwner = $navAdmin && adminIsDecorOwnerUser($navAdmin);
             $navActive = [
                 'dashboard' => $currentPage === 'dashboard',
                 'inventory' => in_array($currentPage, ['inventory', 'categories'], true),
+                'decor'     => in_array($currentPage, ['decor-inventory', 'decor-profile', 'decor-events'], true),
                 'clients'   => in_array($currentPage, ['customers', 'events', 'albums'], true),
                 'sales'     => in_array($currentPage, ['estimates', 'purchases', 'sales', 'partners', 'contracts'], true),
                 'insights'  => $currentPage === 'reports',
@@ -36,6 +42,15 @@ $currentPage = $currentPage ?? '';
             <div class="nav-group">
                 <a href="index.php" class="nav-link <?= $navActive['dashboard'] ? 'active' : '' ?>">📊 Dashboard</a>
             </div>
+
+            <?php if ($navIsDecorOwner): ?>
+            <details class="nav-group" <?= $navActive['decor'] ? 'open' : '' ?>>
+                <summary>Decor</summary>
+                <a href="decor-inventory.php" class="nav-link <?= $currentPage === 'decor-inventory' ? 'active' : '' ?>">🧵 Decor Inventory</a>
+                <a href="decor-events.php" class="nav-link <?= $currentPage === 'decor-events' ? 'active' : '' ?>">🎀 Event Proposals</a>
+                <a href="decor-profile.php" class="nav-link <?= $currentPage === 'decor-profile' ? 'active' : '' ?>">🔑 Decor Password</a>
+            </details>
+            <?php endif; ?>
 
             <details class="nav-group" <?= $navActive['inventory'] ? 'open' : '' ?>>
                 <summary>Stock</summary>
@@ -70,7 +85,7 @@ $currentPage = $currentPage ?? '';
                 <a href="admins.php" class="nav-link <?= $currentPage === 'admins' ? 'active' : '' ?>">🔐 Admin Users</a>
             </details>
         </nav>
-        <?php $navAdmin = currentAdmin(); if ($navAdmin): ?>
+        <?php if ($navAdmin): ?>
         <div class="sidebar-user">
             <div class="sidebar-user-name"><?= e($navAdmin['display_name']) ?></div>
             <div class="sidebar-user-meta">@<?= e($navAdmin['username']) ?></div>

@@ -130,8 +130,11 @@ CREATE TABLE IF NOT EXISTS estimate_line_items (
   unit_cost DECIMAL(12,2) DEFAULT 0,
   sort_order INT DEFAULT 0,
   notes TEXT,
+  source_type VARCHAR(32) NULL,
+  source_id INT NULL,
   FOREIGN KEY (estimate_id) REFERENCES estimates(id) ON DELETE CASCADE,
-  FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+  FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE SET NULL,
+  INDEX idx_estimate_line_source (source_type, source_id)
 );
 
 CREATE TABLE IF NOT EXISTS partners (
@@ -250,10 +253,121 @@ CREATE TABLE IF NOT EXISTS admin_users (
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NOT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  account_type VARCHAR(32) NOT NULL DEFAULT 'admin',
   last_login_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_admin_username (username)
+  UNIQUE KEY uq_admin_username (username),
+  KEY idx_admin_account_type (account_type)
+);
+
+CREATE TABLE IF NOT EXISTS decor_inventory_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  purchased_from VARCHAR(255) NULL,
+  purchase_date DATE NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  quantity_on_hand INT NOT NULL DEFAULT 0,
+  unit_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+  line_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  default_markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  is_returned TINYINT(1) NOT NULL DEFAULT 0,
+  returned_at DATE NULL,
+  refund_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  notes TEXT NULL,
+  created_by INT NULL,
+  inventory_item_id INT NULL,
+  transfer_mode VARCHAR(32) NULL,
+  transferred_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_decor_purchase_date (purchase_date),
+  INDEX idx_decor_returned (is_returned),
+  INDEX idx_decor_transferred (transferred_at),
+  INDEX idx_decor_inventory_item (inventory_item_id),
+  INDEX idx_decor_qty_on_hand (quantity_on_hand),
+  FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS decor_inventory_handoffs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  decor_inventory_item_id INT NOT NULL,
+  inventory_item_id INT NOT NULL,
+  quantity INT NOT NULL,
+  unit_cost DECIMAL(12,2) NOT NULL DEFAULT 0,
+  transfer_mode VARCHAR(32) NOT NULL,
+  notes VARCHAR(255) NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_decor_handoff_item (decor_inventory_item_id),
+  INDEX idx_decor_handoff_inventory (inventory_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS decor_proposals (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  event_id INT NOT NULL,
+  customer_id INT NOT NULL,
+  estimate_id INT NULL,
+  title VARCHAR(255) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'draft',
+  subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+  tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  discount_type ENUM('percent','flat') NOT NULL DEFAULT 'percent',
+  discount_value DECIMAL(12,2) NOT NULL DEFAULT 0,
+  discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  private_cost_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  notes TEXT NULL,
+  published_at DATETIME NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_decor_proposal_event (event_id),
+  INDEX idx_decor_proposal_customer (customer_id),
+  INDEX idx_decor_proposal_estimate (estimate_id)
+);
+
+CREATE TABLE IF NOT EXISTS decor_proposal_lines (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  proposal_id INT NOT NULL,
+  line_type VARCHAR(32) NOT NULL DEFAULT 'decor',
+  decor_inventory_item_id INT NULL,
+  reservation_id INT NULL,
+  label VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
+  unit_cost DECIMAL(12,2) NOT NULL DEFAULT 0,
+  markup_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  unit_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_decor_proposal_lines_proposal (proposal_id),
+  INDEX idx_decor_proposal_lines_item (decor_inventory_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS decor_inventory_reservations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  decor_inventory_item_id INT NOT NULL,
+  event_id INT NOT NULL,
+  proposal_id INT NULL,
+  proposal_line_id INT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'reserved',
+  checked_out_at DATETIME NULL,
+  checked_in_at DATETIME NULL,
+  notes TEXT NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_decor_res_item (decor_inventory_item_id),
+  INDEX idx_decor_res_event (event_id),
+  INDEX idx_decor_res_status (status),
+  INDEX idx_decor_res_dates (start_date, end_date)
 );
 
 CREATE TABLE IF NOT EXISTS comm_templates (

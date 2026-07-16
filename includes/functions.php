@@ -51,6 +51,35 @@ function getSettings(): array
     return queryOne('SELECT * FROM settings WHERE id = 1') ?: [];
 }
 
+function csrfToken(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrfField(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrfToken()) . '">';
+}
+
+function verifyCsrf(?string $token = null): bool
+{
+    $token = $token ?? ($_POST['csrf_token'] ?? '');
+    $session = $_SESSION['csrf_token'] ?? '';
+    return is_string($token) && $session !== '' && hash_equals($session, $token);
+}
+
+function requireCsrf(): void
+{
+    if (!verifyCsrf()) {
+        flash('error', 'Invalid or expired form token. Please try again.');
+        $back = $_SERVER['HTTP_REFERER'] ?? 'index.php';
+        redirect($back);
+    }
+}
+
 function requireAuth(): void
 {
     try {
@@ -70,7 +99,7 @@ function requireAuth(): void
     unset($_SESSION['logged_in']);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_username'], $_POST['login_password'])) {
-        if (adminAttemptLogin($_POST['login_username'], $_POST['login_password'])) {
+        if (adminAttemptLogin($_POST['login_username'], $_POST['login_password'], 'admin')) {
             redirect($_SERVER['REQUEST_URI']);
         }
         flash('error', 'Invalid username or password.');
