@@ -749,6 +749,32 @@ function getEventProfitLoss(int $eventId): array
 }
 
 /**
+ * Category label for event cost rollups.
+ * Decor custom/labor lines are decoration work — keep them under Decor, not a separate Custom bucket.
+ */
+function eventCostCategoryLabel(?string $inventoryCategory, string $lineType = 'custom', ?string $sourceType = null, bool $fromDecor = false): string
+{
+    $cat = trim((string)$inventoryCategory);
+    if ($cat !== '') {
+        return $cat;
+    }
+
+    $fromDecor = $fromDecor || $sourceType === 'decor_proposal';
+    if ($fromDecor) {
+        return 'Decor';
+    }
+
+    $lineType = strtolower(trim($lineType));
+    if ($lineType === 'labor') {
+        return 'Labor';
+    }
+    if ($lineType === 'inventory' || $lineType === 'decor') {
+        return 'Uncategorized';
+    }
+    return 'Custom';
+}
+
+/**
  * Consolidated category-wise spend for an event.
  * Partner expenses (actual) + estimate/decor line purchase costs (proposal COGS),
  * merged by category name without double-counting published Decor lines.
@@ -831,11 +857,11 @@ function getEventCategoryExpenses(int $eventId): array
             if ($cost <= 0) {
                 continue;
             }
-            $cat = trim((string)($line['category_name'] ?? ''));
-            if ($cat === '') {
-                $type = (string)($line['line_type'] ?? 'custom');
-                $cat = $type === 'labor' ? 'Labor' : ($type === 'inventory' ? 'Uncategorized' : 'Custom');
-            }
+            $cat = eventCostCategoryLabel(
+                $line['category_name'] ?? null,
+                (string)($line['line_type'] ?? 'custom'),
+                $line['source_type'] ?? null
+            );
             $add($cat, $cost, 'proposal');
         }
     }
@@ -859,11 +885,12 @@ function getEventCategoryExpenses(int $eventId): array
                     if ($cost <= 0) {
                         continue;
                     }
-                    $cat = trim((string)($line['category_name'] ?? ''));
-                    if ($cat === '') {
-                        $type = (string)($line['line_type'] ?? 'decor');
-                        $cat = $type === 'labor' ? 'Labor' : ($type === 'custom' ? 'Custom' : 'Decor');
-                    }
+                    $cat = eventCostCategoryLabel(
+                        $line['category_name'] ?? null,
+                        (string)($line['line_type'] ?? 'decor'),
+                        null,
+                        true
+                    );
                     $add($cat, $cost, 'proposal');
                 }
             }
