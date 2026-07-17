@@ -232,7 +232,7 @@
 }
 
 .estimate-sheet .col-item { width: 34%; }
-.estimate-sheet .col-qty { width: 9%; }
+.estimate-sheet .col-qty { width: 12%; }
 .estimate-sheet .col-avail { width: 11%; }
 .estimate-sheet .col-money { width: 12%; }
 .estimate-sheet .col-actions { width: 2.4rem; }
@@ -298,6 +298,58 @@
 
 .estimate-sheet .line-label {
     font-weight: 600;
+}
+
+.estimate-qty-stepper {
+    display: grid;
+    grid-template-columns: 1.25rem minmax(2.1rem, 1fr) 1.25rem;
+    align-items: stretch;
+    height: 1.85rem;
+}
+
+.estimate-qty-stepper .line-qty {
+    min-width: 0;
+    padding-left: .1rem !important;
+    padding-right: .1rem !important;
+    text-align: center !important;
+}
+
+.estimate-qty-stepper .line-qty::-webkit-inner-spin-button,
+.estimate-qty-stepper .line-qty::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
+.estimate-qty-stepper .line-qty {
+    -moz-appearance: textfield;
+}
+
+.qty-step {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #64748b;
+    padding: 0;
+    font: inherit;
+    font-size: .85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.qty-step:hover,
+.qty-step:focus-visible {
+    background: #ede9fe;
+    color: var(--primary);
+    outline: none;
+}
+
+.estimate-line-row.is-over-limit td {
+    animation: estimate-over-limit .9s ease-out;
+}
+
+@keyframes estimate-over-limit {
+    0%, 35% { background: #fee2e2; }
+    100% { background: transparent; }
 }
 
 .estimate-sheet .cell-money,

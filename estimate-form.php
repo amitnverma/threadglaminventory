@@ -63,10 +63,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'quantity' => (float)($_POST['line_qty'][$i] ?? 1),
             'unit_price' => (float)($_POST['line_price'][$i] ?? 0),
             'unit_cost' => (float)($_POST['line_cost'][$i] ?? 0),
-            'source_type' => $source['source_type'] ?? null,
-            'source_id' => $source['source_id'] ?? null,
+            'source_type' => $_POST['line_source_type'][$i] ?? ($source['source_type'] ?? null),
+            'source_id' => !empty($_POST['line_source_id'][$i])
+                ? (int)$_POST['line_source_id'][$i]
+                : ($source['source_id'] ?? null),
         ];
     }
+
+    $requestedInventory = [];
+    foreach ($lineData as $line) {
+        if ($line['quantity'] <= 0) {
+            flash('error', 'Every estimate line must have a quantity greater than zero.');
+            redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+        }
+        $inventoryId = (int)($line['inventory_item_id'] ?? 0);
+        if ($inventoryId > 0) {
+            $requestedInventory[$inventoryId] = ($requestedInventory[$inventoryId] ?? 0) + (float)$line['quantity'];
+        }
+    }
+    if ($requestedInventory) {
+        $inventoryIds = array_keys($requestedInventory);
+        $placeholders = implode(',', array_fill(0, count($inventoryIds), '?'));
+        $inventoryRows = query(
+            "SELECT id, name, quantity_on_hand
+             FROM inventory_items
+             WHERE deleted_at IS NULL AND id IN ($placeholders)",
+            $inventoryIds
+        );
+        $inventoryById = [];
+        foreach ($inventoryRows as $inventoryRow) {
+            $inventoryById[(int)$inventoryRow['id']] = $inventoryRow;
+        }
+        foreach ($requestedInventory as $inventoryId => $quantity) {
+            $inventoryItem = $inventoryById[$inventoryId] ?? null;
+            if (!$inventoryItem) {
+                flash('error', 'An inventory item on this estimate is no longer available.');
+                redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+            }
+            if ($quantity > (int)$inventoryItem['quantity_on_hand']) {
+                flash(
+                    'error',
+                    $inventoryItem['name'] . ' has only ' . (int)$inventoryItem['quantity_on_hand']
+                    . ' available in Main Inventory.'
+                );
+                redirect($id ? ('estimate-form.php?id=' . $id) : 'estimate-form.php');
+            }
+        }
+    }
+
     $opts = ['tax_percent' => $_POST['tax_percent'], 'discount_type' => $_POST['discount_type'], 'discount_value' => $_POST['discount_value']];
     $totals = calculateEstimateTotals($lineData, $opts);
 
@@ -126,7 +170,7 @@ $totals = calculateEstimateTotals($lines, $d);
     <div class="page-header estimate-page-header">
         <div>
             <h1><?= $id ? 'Edit' : 'New' ?> Estimate</h1>
-            <p class="subtitle">Add stock on the left · edit lines like a spreadsheet · save on the right</p>
+            <p class="subtitle">Add from Main Inventory · adjust quantities with − / + · save on the right</p>
         </div>
         <?php if ($id): ?>
         <div class="flex">
@@ -182,23 +226,27 @@ $totals = calculateEstimateTotals($lines, $d);
         <div class="estimate-layout">
             <aside class="card estimate-stock-panel">
                 <div class="estimate-panel-head">
-                    <h3>Stock</h3>
+                    <h3>Main Inventory</h3>
                     <span class="hint"><?= count($catalog) ?> items</span>
                 </div>
                 <input type="search" id="catalog-search" placeholder="Search stock…" oninput="filterCatalog(this.value)" autocomplete="off">
                 <div id="catalog-list" class="estimate-catalog-list">
                     <?php foreach ($catalog as $item): ?>
-                    <div class="catalog-item" data-name="<?= e(strtolower($item['name'])) ?>">
+                    <div class="catalog-item"
+                        data-name="<?= e(strtolower($item['name'])) ?>"
+                        data-inventory-id="<?= (int)$item['id'] ?>"
+                        data-stock-total="<?= (int)$item['quantity_on_hand'] ?>">
                         <div class="catalog-item-info">
                             <strong title="<?= e($item['name']) ?>"><?= e($item['name']) ?></strong>
                             <div class="catalog-item-meta">
                                 <span class="is-cost"><?= formatMoney($item['unit_cost']) ?></span>
-                                <span class="<?= (int)$item['quantity_on_hand'] > 0 ? 'is-available' : 'is-empty' ?>">
+                                <span class="catalog-stock-count <?= (int)$item['quantity_on_hand'] > 0 ? 'is-available' : 'is-empty' ?>">
                                     <?= (int)$item['quantity_on_hand'] ?>
                                 </span>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-primary" title="Add" aria-label="Add <?= e($item['name']) ?>"
+                        <button type="button" class="btn btn-sm btn-primary catalog-add-btn" title="Add" aria-label="Add <?= e($item['name']) ?>"
+                            <?= (int)$item['quantity_on_hand'] < 1 ? 'disabled' : '' ?>
                             onclick='addEstimateLine(<?= json_encode([
                                 "id" => (int)$item["id"],
                                 "label" => $item["name"],
@@ -256,11 +304,19 @@ $totals = calculateEstimateTotals($lines, $d);
                                 <input type="hidden" name="line_inventory_id[]" value="<?= e($line['inventory_item_id']) ?>">
                                 <input type="hidden" name="line_type[]" value="<?= e($line['line_type']) ?>">
                                 <input type="hidden" name="line_cost[]" value="<?= e(number_format($purchaseCost, 2, '.', '')) ?>">
+                                <input type="hidden" name="line_source_type[]" value="<?= e((string)($line['source_type'] ?? '')) ?>">
+                                <input type="hidden" name="line_source_id[]" value="<?= e((string)($line['source_id'] ?? '')) ?>">
                                 <input type="text" name="line_label[]" value="<?= e($line['label']) ?>" class="cell-input line-label" title="<?= $isInventory ? 'From inventory' : 'Custom / labor' ?>">
                             </td>
                             <td class="col-qty">
-                                <input type="number" name="line_qty[]" value="<?= e((string)$line['quantity']) ?>"
-                                    min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">
+                                <div class="estimate-qty-stepper">
+                                    <button type="button" class="qty-step qty-minus" onclick="changeEstimateQty(this,-1)" aria-label="Reduce quantity">−</button>
+                                    <input type="number" name="line_qty[]" value="<?= e((string)$line['quantity']) ?>"
+                                        min="1" step="<?= $isInventory ? '1' : '0.5' ?>"
+                                        <?= $available !== null ? 'max="' . (int)$available . '"' : '' ?>
+                                        class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">
+                                    <button type="button" class="qty-step qty-plus" onclick="changeEstimateQty(this,1)" aria-label="Increase quantity">+</button>
+                                </div>
                             </td>
                             <td class="col-avail">
                                 <?php if ($available !== null): ?>

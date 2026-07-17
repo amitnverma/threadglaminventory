@@ -43,10 +43,16 @@
             '<input type="hidden" name="line_inventory_id[]" value="' + escapeHtml(item.id || '') + '">',
             '<input type="hidden" name="line_type[]" value="' + escapeHtml(item.type || 'inventory') + '">',
             '<input type="hidden" name="line_cost[]" value="' + purchaseCost.toFixed(2) + '">',
+            '<input type="hidden" name="line_source_type[]" value="">',
+            '<input type="hidden" name="line_source_id[]" value="">',
             '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="cell-input line-label" title="From inventory">',
             '</td>',
             '<td class="col-qty">',
-            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '<div class="estimate-qty-stepper">',
+            '<button type="button" class="qty-step qty-minus" onclick="changeEstimateQty(this,-1)" aria-label="Reduce quantity">−</button>',
+            '<input type="number" name="line_qty[]" value="1" min="1" max="' + available + '" step="1" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '<button type="button" class="qty-step qty-plus" onclick="changeEstimateQty(this,1)" aria-label="Increase quantity">+</button>',
+            '</div>',
             '</td>',
             '<td class="col-avail"><div class="estimate-usage" title="Using 1 of ' + available + ' in stock">',
             '<span class="usage-count"><strong>1</strong>/' + available + '</span>',
@@ -72,10 +78,16 @@
             '<input type="hidden" name="line_inventory_id[]" value="">',
             '<input type="hidden" name="line_type[]" value="' + escapeHtml(item.type || 'custom') + '">',
             '<input type="hidden" name="line_cost[]" value="' + cost.toFixed(2) + '">',
+            '<input type="hidden" name="line_source_type[]" value="">',
+            '<input type="hidden" name="line_source_id[]" value="">',
             '<input type="text" name="line_label[]" value="' + escapeHtml(item.label || '') + '" class="cell-input line-label" title="Custom / labor">',
             '</td>',
             '<td class="col-qty">',
-            '<input type="number" name="line_qty[]" value="1" min="0" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '<div class="estimate-qty-stepper">',
+            '<button type="button" class="qty-step qty-minus" onclick="changeEstimateQty(this,-1)" aria-label="Reduce quantity">−</button>',
+            '<input type="number" name="line_qty[]" value="1" min="0.5" step="0.5" class="cell-input cell-money line-qty" oninput="updateEstimateTotal()">',
+            '<button type="button" class="qty-step qty-plus" onclick="changeEstimateQty(this,1)" aria-label="Increase quantity">+</button>',
+            '</div>',
             '</td>',
             '<td class="col-avail"><span class="cell-readonly muted">—</span></td>',
             '<td class="col-money"><span class="cell-readonly cell-money line-cost-display">' + cost.toFixed(2) + '</span></td>',
@@ -104,7 +116,16 @@
             if (existing) {
                 var qtyInput = existing.querySelector('.line-qty');
                 if (qtyInput) {
-                    qtyInput.value = String(number(qtyInput.value) + 1);
+                    var available = Math.max(0, number(existing.dataset.available));
+                    var nextQuantity = number(qtyInput.value) + 1;
+                    if (nextQuantity > available) {
+                        existing.classList.remove('is-highlighted');
+                        void existing.offsetWidth;
+                        existing.classList.add('is-over-limit');
+                        setTimeout(function () { existing.classList.remove('is-over-limit'); }, 900);
+                        return;
+                    }
+                    qtyInput.value = String(nextQuantity);
                     window.updateEstimateTotal();
                     existing.classList.remove('is-highlighted');
                     void existing.offsetWidth;
@@ -133,6 +154,36 @@
             price: 0,
             cost: 0
         });
+    };
+
+    window.changeEstimateQty = function (button, direction) {
+        var row = button.closest('.estimate-line-row');
+        if (!row) return;
+        var input = row.querySelector('.line-qty');
+        if (!input) return;
+
+        var step = Math.max(0.01, number(input.step) || 1);
+        var current = Math.max(0, number(input.value));
+        var next = current + (direction * step);
+        var isInventory = row.dataset.inventoryId !== '';
+        var max = isInventory ? Math.max(0, number(row.dataset.available)) : Infinity;
+
+        if (direction < 0 && next < step) {
+            row.remove();
+            window.updateEstimateTotal();
+            return;
+        }
+        if (next > max) {
+            row.classList.remove('is-over-limit');
+            void row.offsetWidth;
+            row.classList.add('is-over-limit');
+            setTimeout(function () { row.classList.remove('is-over-limit'); }, 900);
+            return;
+        }
+
+        input.value = formatQty(next);
+        window.updateEstimateTotal();
+        input.focus();
     };
 
     window.resetEstimateRate = function (button) {
@@ -172,6 +223,27 @@
         var sourceRate = number(row.dataset.sourceRate);
         var overridden = Math.abs(rate - sourceRate) > 0.0001;
         reset.classList.toggle('is-visible', overridden);
+    }
+
+    function updateCatalogAvailability() {
+        document.querySelectorAll('#catalog-list .catalog-item[data-inventory-id]').forEach(function (item) {
+            var id = item.dataset.inventoryId;
+            var total = Math.max(0, number(item.dataset.stockTotal));
+            var row = document.querySelector('#estimate-lines .estimate-line-row[data-inventory-id="' + id.replace(/"/g, '\\"') + '"]');
+            var used = row ? Math.max(0, number(row.querySelector('.line-qty') && row.querySelector('.line-qty').value)) : 0;
+            var remaining = Math.max(0, total - used);
+            var count = item.querySelector('.catalog-stock-count');
+            var add = item.querySelector('.catalog-add-btn');
+            if (count) {
+                count.textContent = formatQty(remaining) + ' free';
+                count.classList.toggle('is-available', remaining > 0);
+                count.classList.toggle('is-empty', remaining <= 0);
+            }
+            if (add) {
+                add.disabled = remaining <= 0;
+                add.title = remaining > 0 ? 'Add one' : 'All stock is already on this estimate';
+            }
+        });
     }
 
     function updateProfit() {
@@ -218,6 +290,7 @@
             var element = document.getElementById(pair[0]);
             if (element) element.textContent = money(pair[1]);
         });
+        updateCatalogAvailability();
         updateProfit();
     };
 
