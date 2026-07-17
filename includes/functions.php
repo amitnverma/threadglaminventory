@@ -544,6 +544,20 @@ function getCeremonyTypes(): array
     return ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Anniversary', 'Engagement', 'Baby Shower', 'Graduation', 'Other'];
 }
 
+function ensureEstimatePricingSchema(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    $column = query("SHOW COLUMNS FROM estimates LIKE 'profit_amount'");
+    if (empty($column)) {
+        execute(
+            'ALTER TABLE estimates ADD COLUMN profit_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER discount_amount'
+        );
+    }
+}
+
 function calculateEstimateTotals(array $lines, array $opts = []): array
 {
     $subtotal = 0;
@@ -559,19 +573,22 @@ function calculateEstimateTotals(array $lines, array $opts = []): array
 
     $taxPercent = (float) ($opts['tax_percent'] ?? 0);
     $discountType = $opts['discount_type'] ?? 'percent';
-    $discountValue = (float) ($opts['discount_value'] ?? 0);
+    $discountValue = max(0, (float) ($opts['discount_value'] ?? 0));
     $discountAmount = $discountType === 'percent' ? ($subtotal * $discountValue / 100) : $discountValue;
-    $taxable = max(0, $subtotal - $discountAmount);
+    $discountAmount = max(0, min($subtotal, $discountAmount));
+    $profitAmount = max(0, (float) ($opts['profit_amount'] ?? 0));
+    $taxable = max(0, $subtotal - $discountAmount + $profitAmount);
     $taxAmount = $taxable * $taxPercent / 100;
     $total = $taxable + $taxAmount;
 
     return [
         'subtotal' => round($subtotal, 2),
         'discount_amount' => round($discountAmount, 2),
+        'profit_amount' => round($profitAmount, 2),
         'tax_amount' => round($taxAmount, 2),
         'total' => round($total, 2),
         'total_cost' => round($totalCost, 2),
-        'profit' => round($total - $totalCost, 2),
+        'profit' => round($taxable - $totalCost, 2),
     ];
 }
 
@@ -698,7 +715,10 @@ function buildContractData(?array $contract, ?array $customer, ?array $event, ?a
         'event_date' => isset($event['event_date']) ? formatDate($event['event_date']) : '',
         'event_venue' => $event['venue'] ?? '',
         'event_type' => $event['ceremony_type'] ?? '',
-        'subtotal' => formatMoney($estimate['subtotal'] ?? 0),
+        // Profit is internal; customer-facing subtotal includes it without exposing margin.
+        'subtotal' => formatMoney(
+            (float)($estimate['subtotal'] ?? 0) + (float)($estimate['profit_amount'] ?? 0)
+        ),
         'tax_percent' => $estimate['tax_percent'] ?? ($settings['default_tax_percent'] ?? 0),
         'tax_amount' => formatMoney($estimate['tax_amount'] ?? 0),
         'discount_amount' => formatMoney($estimate['discount_amount'] ?? 0),

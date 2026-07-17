@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 requireAuth();
+ensureEstimatePricingSchema();
 
 $id = $_GET['id'] ?? null;
 $customers = query('SELECT * FROM customers WHERE deleted_at IS NULL ORDER BY name');
@@ -111,17 +112,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $opts = ['tax_percent' => $_POST['tax_percent'], 'discount_type' => $_POST['discount_type'], 'discount_value' => $_POST['discount_value']];
+    $opts = [
+        'tax_percent' => $_POST['tax_percent'],
+        'discount_type' => $_POST['discount_type'],
+        'discount_value' => $_POST['discount_value'],
+        'profit_amount' => $_POST['profit_amount'] ?? 0,
+    ];
     $totals = calculateEstimateTotals($lineData, $opts);
 
     if ($id) {
-        execute('UPDATE estimates SET customer_id=?,event_id=?,title=?,status=?,subtotal=?,tax_percent=?,tax_amount=?,discount_type=?,discount_value=?,discount_amount=?,total=?,notes=?,updated_at=NOW() WHERE id=?',
-            [$customerId, $eventId, $_POST['title'], $_POST['status'], $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null, $id]);
+        execute('UPDATE estimates SET customer_id=?,event_id=?,title=?,status=?,subtotal=?,tax_percent=?,tax_amount=?,discount_type=?,discount_value=?,discount_amount=?,profit_amount=?,total=?,notes=?,updated_at=NOW() WHERE id=?',
+            [$customerId, $eventId, $_POST['title'], $_POST['status'], $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['profit_amount'], $totals['total'], $_POST['notes'] ?? null, $id]);
         execute('DELETE FROM estimate_line_items WHERE estimate_id=?', [$id]);
         $estId = $id;
     } else {
-        execute('INSERT INTO estimates (customer_id,event_id,title,status,subtotal,tax_percent,tax_amount,discount_type,discount_value,discount_amount,total,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-            [$customerId, $eventId, $_POST['title'], $_POST['status'] ?? 'draft', $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['total'], $_POST['notes'] ?? null]);
+        execute('INSERT INTO estimates (customer_id,event_id,title,status,subtotal,tax_percent,tax_amount,discount_type,discount_value,discount_amount,profit_amount,total,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            [$customerId, $eventId, $_POST['title'], $_POST['status'] ?? 'draft', $totals['subtotal'], $_POST['tax_percent'], $totals['tax_amount'], $_POST['discount_type'], $_POST['discount_value'], $totals['discount_amount'], $totals['profit_amount'], $totals['total'], $_POST['notes'] ?? null]);
         $estId = lastId();
     }
     // Ensure source columns exist (idempotent) for Decor-published lines.
@@ -162,7 +168,7 @@ $pageTitle = $id ? 'Edit Estimate' : 'New Estimate';
 $loadEstimateBuilder = true;
 $pageScripts = ['assets/js/estimate-builder.js'];
 require_once __DIR__ . '/includes/header.php';
-$d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['event_id']??'','title'=>'New Estimate','status'=>'draft','tax_percent'=>$settings['default_tax_percent']??8.875,'discount_type'=>'percent','discount_value'=>0,'notes'=>''];
+$d = $estimate ?: ['customer_id'=>$_GET['customer_id']??'','event_id'=>$_GET['event_id']??'','title'=>'New Estimate','status'=>'draft','tax_percent'=>$settings['default_tax_percent']??8.875,'discount_type'=>'percent','discount_value'=>0,'profit_amount'=>0,'notes'=>''];
 $totals = calculateEstimateTotals($lines, $d);
 ?>
 
@@ -382,6 +388,16 @@ $totals = calculateEstimateTotals($lines, $d);
                         <strong id="est-discount"><?= formatMoney($totals['discount_amount']) ?></strong>
                     </div>
                     <div class="form-group estimate-summary-field">
+                        <label>Profit amount</label>
+                        <input type="number" min="0" step="0.01" name="profit_amount" id="profit_amount"
+                            value="<?= e(number_format((float)($d['profit_amount'] ?? 0), 2, '.', '')) ?>"
+                            oninput="updateEstimateTotal()" placeholder="0.00">
+                    </div>
+                    <div class="estimate-summary-row">
+                        <span>Profit added</span>
+                        <strong id="est-profit-added"><?= formatMoney($totals['profit_amount']) ?></strong>
+                    </div>
+                    <div class="form-group estimate-summary-field">
                         <label>Tax %</label>
                         <input type="number" step="0.01" name="tax_percent" id="tax_percent" value="<?= e((string)$d['tax_percent']) ?>" oninput="updateEstimateTotal()">
                     </div>
@@ -394,7 +410,7 @@ $totals = calculateEstimateTotals($lines, $d);
                         <strong id="est-total"><?= formatMoney($totals['total']) ?></strong>
                     </div>
                     <div class="estimate-summary-row is-muted">
-                        <span>Profit est.</span>
+                        <span>Estimated margin</span>
                         <strong id="est-profit"><?= formatMoney($totals['profit']) ?></strong>
                     </div>
                 </div>

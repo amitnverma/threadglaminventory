@@ -246,7 +246,7 @@
         });
     }
 
-    function updateProfit() {
+    function updateProfit(preTaxRevenue) {
         var profitEl = document.getElementById('est-profit');
         if (!profitEl) return;
         var totalCost = 0;
@@ -255,9 +255,7 @@
             var costInput = row.querySelector('input[name="line_cost[]"]');
             totalCost += quantity * number(costInput && costInput.value);
         });
-        var totalText = document.getElementById('est-total');
-        var total = number(String(totalText && totalText.textContent || '').replace(/[^0-9.-]/g, ''));
-        profitEl.textContent = money(total - totalCost);
+        profitEl.textContent = money(preTaxRevenue - totalCost);
     }
 
     window.updateEstimateTotal = function () {
@@ -277,13 +275,16 @@
         var discountValue = Math.max(0, number(document.getElementById('discount_value') && document.getElementById('discount_value').value));
         var discountType = (document.getElementById('discount_type') && document.getElementById('discount_type').value) || 'percent';
         var discount = discountType === 'percent' ? subtotal * discountValue / 100 : discountValue;
-        var taxable = Math.max(0, subtotal - discount);
+        discount = Math.max(0, Math.min(subtotal, discount));
+        var profitAmount = Math.max(0, number(document.getElementById('profit_amount') && document.getElementById('profit_amount').value));
+        var taxable = Math.max(0, subtotal - discount + profitAmount);
         var tax = taxable * taxPercent / 100;
         var total = taxable + tax;
 
         [
             ['est-subtotal', subtotal],
             ['est-discount', discount],
+            ['est-profit-added', profitAmount],
             ['est-tax', tax],
             ['est-total', total]
         ].forEach(function (pair) {
@@ -291,7 +292,7 @@
             if (element) element.textContent = money(pair[1]);
         });
         updateCatalogAvailability();
-        updateProfit();
+        updateProfit(taxable);
     };
 
     document.addEventListener('DOMContentLoaded', window.updateEstimateTotal);

@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS estimates (
   discount_type ENUM('percent', 'flat') DEFAULT 'percent',
   discount_value DECIMAL(12,2) DEFAULT 0,
   discount_amount DECIMAL(12,2) DEFAULT 0,
+  profit_amount DECIMAL(12,2) DEFAULT 0,
   total DECIMAL(12,2) DEFAULT 0,
   valid_until DATE,
   notes TEXT,
