@@ -6,6 +6,7 @@ ensureDecorInventorySchema();
 
 $currentPage = 'reports';
 $pageTitle = 'Reports';
+$loadEventHub = true;
 require_once __DIR__ . '/includes/header.php';
 
 $salesTotal = queryOne('SELECT COALESCE(SUM(total),0) as t FROM sales');
@@ -35,7 +36,12 @@ $expenseTotal = queryOne('SELECT COALESCE(SUM(amount),0) as t FROM partner_expen
 $events = query('SELECT e.id, e.title, e.status, c.name as customer_name FROM events e JOIN customers c ON c.id=e.customer_id WHERE e.deleted_at IS NULL ORDER BY e.event_date DESC LIMIT 20');
 ?>
 
-<div class="page-header"><h1>Reports</h1></div>
+<div class="page-header">
+    <div>
+        <h1>Reports</h1>
+        <p class="subtitle">Company totals · open an event for its category cost breakdown</p>
+    </div>
+</div>
 
 <div class="stats">
     <div class="stat"><div class="label">Total Sales</div><div class="value" style="color:#059669"><?= formatMoney($salesTotal['t']) ?></div></div>
@@ -52,22 +58,50 @@ $events = query('SELECT e.id, e.title, e.status, c.name as customer_name FROM ev
 </div>
 
 <div class="card">
-    <h3 class="mb-1">Event Profit & Loss</h3>
-    <table>
-        <tr><th>Event</th><th>Customer</th><th>Status</th><th>Revenue</th><th>Expenses</th><th>Profit</th></tr>
-        <?php foreach ($events as $ev):
-            $pnl = getEventProfitLoss($ev['id']);
-        ?>
-        <tr>
-            <td><a href="event-view.php?id=<?= $ev['id'] ?>"><?= e($ev['title']) ?></a></td>
-            <td><?= e($ev['customer_name']) ?></td>
-            <td><?= e(ucfirst($ev['status'])) ?></td>
-            <td><?= formatMoney($pnl['revenue']) ?></td>
-            <td><?= formatMoney($pnl['expenses']) ?></td>
-            <td style="color:<?= $pnl['profit']>=0?'#059669':'#dc2626' ?>"><?= formatMoney($pnl['profit']) ?></td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+    <h3 class="mb-1">Event Profit &amp; Loss</h3>
+    <div class="table-wrap">
+        <table class="data-table">
+            <tr>
+                <th>Event</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Revenue</th>
+                <th>Partner</th>
+                <th>Categories</th>
+                <th>Profit</th>
+            </tr>
+            <?php foreach ($events as $ev):
+                $pnl = getEventProfitLoss((int)$ev['id']);
+                $topCats = array_slice($pnl['categories'] ?? [], 0, 3);
+            ?>
+            <tr>
+                <td><a href="event-view.php?id=<?= (int)$ev['id'] ?>&tab=pnl"><?= e($ev['title']) ?></a></td>
+                <td><?= e($ev['customer_name']) ?></td>
+                <td><?= e(ucfirst($ev['status'])) ?></td>
+                <td><?= formatMoney($pnl['revenue']) ?></td>
+                <td><?= formatMoney($pnl['expenses']) ?></td>
+                <td class="reports-category-cell">
+                    <?php if ($topCats): ?>
+                        <div class="reports-category-pills">
+                            <?php foreach ($topCats as $cat): ?>
+                                <span class="reports-category-pill">
+                                    <?= e($cat['name']) ?>
+                                    <em><?= formatMoney($cat['total']) ?></em>
+                                </span>
+                            <?php endforeach; ?>
+                            <?php if (count($pnl['categories']) > 3): ?>
+                                <span class="reports-category-pill">+<?= count($pnl['categories']) - 3 ?></span>
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <span class="text-muted">—</span>
+                    <?php endif; ?>
+                </td>
+                <td style="color:<?= $pnl['profit']>=0?'#059669':'#dc2626' ?>"><?= formatMoney($pnl['profit']) ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
 </div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

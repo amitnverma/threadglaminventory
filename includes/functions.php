@@ -715,7 +715,169 @@ function getEventProfitLoss(int $eventId): array
     $expenses = queryOne('SELECT COALESCE(SUM(amount),0) as t FROM partner_expenses WHERE event_id=?', [$eventId]);
     $revenue = (float)$sales['t'] + (float)$estimates['t'];
     $costs = (float)$expenses['t'];
-    return ['revenue' => $revenue, 'expenses' => $costs, 'profit' => $revenue - $costs];
+    $breakdown = getEventCategoryExpenses($eventId);
+    return [
+        'revenue' => $revenue,
+        'expenses' => $costs,
+        'proposal_cost' => $breakdown['proposal_total'],
+        'category_total' => $breakdown['total'],
+        'profit' => $revenue - $costs,
+        'categories' => $breakdown['categories'],
+        'estimate_id' => $breakdown['estimate_id'],
+        'estimate_title' => $breakdown['estimate_title'],
+    ];
+}
+
+/**
+ * Consolidated category-wise spend for an event.
+ * Partner expenses (actual) + estimate/decor line purchase costs (proposal COGS),
+ * merged by category name without double-counting published Decor lines.
+ *
+ * @return array{
+ *   categories: list<array{name:string,partner:float,proposal:float,total:float,share:float}>,
+ *   total: float,
+ *   partner_total: float,
+ *   proposal_total: float,
+ *   estimate_id: ?int,
+ *   estimate_title: ?string
+ * }
+ */
+function getEventCategoryExpenses(int $eventId): array
+{
+    $buckets = [];
+
+    $add = static function (string $name, float $amount, string $kind) use (&$buckets): void {
+        $amount = round($amount, 2);
+        if ($amount <= 0) {
+            return;
+        }
+        $name = trim($name) !== '' ? trim($name) : 'Uncategorized';
+        $key = strtolower($name);
+        if (!isset($buckets[$key])) {
+            $buckets[$key] = [
+                'name' => $name,
+                'partner' => 0.0,
+                'proposal' => 0.0,
+                'total' => 0.0,
+            ];
+        }
+        $buckets[$key][$kind] = round($buckets[$key][$kind] + $amount, 2);
+        $buckets[$key]['total'] = round($buckets[$key]['partner'] + $buckets[$key]['proposal'], 2);
+    };
+
+    foreach (query(
+        "SELECT COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized') AS category_name,
+                SUM(amount) AS amount
+         FROM partner_expenses
+         WHERE event_id=?
+         GROUP BY category_name",
+        [$eventId]
+    ) as $row) {
+        $add((string)$row['category_name'], (float)$row['amount'], 'partner');
+    }
+
+    $primaryEstimate = queryOne(
+        "SELECT id, title, status
+         FROM estimates
+         WHERE event_id=?
+         ORDER BY
+            CASE status
+                WHEN 'approved' THEN 1
+                WHEN 'sent' THEN 2
+                WHEN 'draft' THEN 3
+                ELSE 4
+            END,
+            updated_at DESC,
+            id DESC
+         LIMIT 1",
+        [$eventId]
+    );
+
+    $decorCoveredByEstimate = false;
+    if ($primaryEstimate) {
+        $estimateLines = query(
+            "SELECT eli.line_type, eli.source_type, eli.quantity, eli.unit_cost, ic.name AS category_name
+             FROM estimate_line_items eli
+             LEFT JOIN inventory_items i ON i.id = eli.inventory_item_id AND i.deleted_at IS NULL
+             LEFT JOIN inventory_categories ic ON ic.id = i.category_id
+             WHERE eli.estimate_id=?",
+            [(int)$primaryEstimate['id']]
+        );
+        foreach ($estimateLines as $line) {
+            if (($line['source_type'] ?? '') === 'decor_proposal') {
+                $decorCoveredByEstimate = true;
+            }
+            $cost = (float)$line['quantity'] * (float)$line['unit_cost'];
+            if ($cost <= 0) {
+                continue;
+            }
+            $cat = trim((string)($line['category_name'] ?? ''));
+            if ($cat === '') {
+                $type = (string)($line['line_type'] ?? 'custom');
+                $cat = $type === 'labor' ? 'Labor' : ($type === 'inventory' ? 'Uncategorized' : 'Custom');
+            }
+            $add($cat, $cost, 'proposal');
+        }
+    }
+
+    if (!$decorCoveredByEstimate) {
+        try {
+            $decorExists = query("SHOW TABLES LIKE 'decor_proposal_lines'");
+            if (!empty($decorExists)) {
+                $decorLines = query(
+                    "SELECT dpl.line_type, dpl.quantity, dpl.unit_cost, ic.name AS category_name
+                     FROM decor_proposals dp
+                     JOIN decor_proposal_lines dpl ON dpl.proposal_id = dp.id
+                     LEFT JOIN decor_inventory_items di ON di.id = dpl.decor_inventory_item_id
+                     LEFT JOIN inventory_items i ON i.id = di.inventory_item_id AND i.deleted_at IS NULL
+                     LEFT JOIN inventory_categories ic ON ic.id = i.category_id
+                     WHERE dp.event_id=?",
+                    [$eventId]
+                );
+                foreach ($decorLines as $line) {
+                    $cost = (float)$line['quantity'] * (float)$line['unit_cost'];
+                    if ($cost <= 0) {
+                        continue;
+                    }
+                    $cat = trim((string)($line['category_name'] ?? ''));
+                    if ($cat === '') {
+                        $type = (string)($line['line_type'] ?? 'decor');
+                        $cat = $type === 'labor' ? 'Labor' : ($type === 'custom' ? 'Custom' : 'Decor');
+                    }
+                    $add($cat, $cost, 'proposal');
+                }
+            }
+        } catch (Throwable $e) {
+            // Decor schema may not exist yet on older installs.
+        }
+    }
+
+    $categories = array_values($buckets);
+    usort($categories, static fn($a, $b) => $b['total'] <=> $a['total']);
+
+    $partnerTotal = 0.0;
+    $proposalTotal = 0.0;
+    $total = 0.0;
+    foreach ($categories as &$cat) {
+        $partnerTotal += $cat['partner'];
+        $proposalTotal += $cat['proposal'];
+        $total += $cat['total'];
+    }
+    unset($cat);
+
+    foreach ($categories as &$cat) {
+        $cat['share'] = $total > 0 ? round(($cat['total'] / $total) * 100, 1) : 0.0;
+    }
+    unset($cat);
+
+    return [
+        'categories' => $categories,
+        'total' => round($total, 2),
+        'partner_total' => round($partnerTotal, 2),
+        'proposal_total' => round($proposalTotal, 2),
+        'estimate_id' => $primaryEstimate ? (int)$primaryEstimate['id'] : null,
+        'estimate_title' => $primaryEstimate['title'] ?? null,
+    ];
 }
 
 function getContractPlaceholders(): array

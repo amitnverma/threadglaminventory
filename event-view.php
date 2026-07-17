@@ -75,9 +75,12 @@ $partners = query('SELECT * FROM partners ORDER BY name');
 $primaryImg = getPrimaryImage('event', $id);
 $commSessions = ($tab === 'comms' || $tab === 'overview') ? commSessionsForEvent($id) : [];
 $commDecisions = ($tab === 'comms' || $tab === 'overview') ? commDecisionsForEvent($id) : [];
+$categoryCosts = $pnl['categories'] ?? [];
+$topCategories = array_slice($categoryCosts, 0, 4);
 
 $currentPage = 'events';
 $pageTitle = $event['title'];
+$loadEventHub = true;
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -104,7 +107,7 @@ require_once __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <div class="tabs">
-    <?php foreach (['overview'=>'Overview','comms'=>'Communications','estimates'=>'Estimates','expenses'=>'Expenses','images'=>'Photos','pnl'=>'P&L'] as $k=>$label): ?>
+    <?php foreach (['overview'=>'Overview','comms'=>'Communications','estimates'=>'Estimates','expenses'=>'Expenses','images'=>'Photos','pnl'=>'Costs'] as $k=>$label): ?>
     <a href="?id=<?= $id ?>&tab=<?= $k ?>" class="<?= $tab===$k?'active':'' ?>"><?= $label ?></a>
     <?php endforeach; ?>
 </div>
@@ -124,8 +127,25 @@ require_once __DIR__ . '/includes/header.php';
         <h3>Quick Stats</h3>
         <div class="stats" style="margin:0">
             <div class="stat success"><div class="label">Revenue</div><div class="value" style="font-size:1.25rem"><?= formatMoney($pnl['revenue']) ?></div></div>
-            <div class="stat danger"><div class="label">Expenses</div><div class="value" style="font-size:1.25rem"><?= formatMoney($pnl['expenses']) ?></div></div>
+            <div class="stat danger"><div class="label">Partner spend</div><div class="value" style="font-size:1.25rem"><?= formatMoney($pnl['expenses']) ?></div></div>
         </div>
+        <?php if ($topCategories): ?>
+        <div class="event-category-teaser mt-1">
+            <div class="flex" style="justify-content:space-between;align-items:baseline">
+                <strong style="font-size:.82rem">Top categories</strong>
+                <a href="?id=<?= $id ?>&tab=pnl" class="btn btn-sm btn-secondary">Full costs</a>
+            </div>
+            <?php foreach ($topCategories as $i => $cat): ?>
+            <div class="event-category-chip">
+                <div class="label">
+                    <span class="dot" style="opacity:<?= max(0.35, 1 - ($i * 0.18)) ?>"></span>
+                    <span><?= e($cat['name']) ?></span>
+                </div>
+                <strong><?= formatMoney($cat['total']) ?></strong>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
         <?php if ($event['internal_notes']): ?><p class="mt-1"><strong>Notes:</strong> <?= e($event['internal_notes']) ?></p><?php endif; ?>
     </div>
 </div>
@@ -315,10 +335,123 @@ $latestSessions = array_slice($commSessions, 0, 3);
 </div>
 
 <?php elseif ($tab === 'pnl'): ?>
-<div class="stats">
-    <div class="stat success"><div class="label">Revenue</div><div class="value"><?= formatMoney($pnl['revenue']) ?></div></div>
-    <div class="stat danger"><div class="label">Expenses</div><div class="value"><?= formatMoney($pnl['expenses']) ?></div></div>
-    <div class="stat"><div class="label">Net Profit</div><div class="value" style="color:<?= $pnl['profit']>=0?'#059669':'#dc2626' ?>"><?= formatMoney($pnl['profit']) ?></div></div>
+<?php
+    $maxCategory = !empty($categoryCosts) ? max(array_column($categoryCosts, 'total')) : 0;
+?>
+<div class="event-cost-strip">
+    <div class="is-revenue">
+        <span>Revenue</span>
+        <strong><?= formatMoney($pnl['revenue']) ?></strong>
+    </div>
+    <div class="is-expense">
+        <span>Partner spend</span>
+        <strong><?= formatMoney($pnl['expenses']) ?></strong>
+    </div>
+    <div class="is-proposal">
+        <span>Proposal cost</span>
+        <strong><?= formatMoney($pnl['proposal_cost'] ?? 0) ?></strong>
+    </div>
+    <div>
+        <span>Net after partners</span>
+        <strong style="color:<?= $pnl['profit'] >= 0 ? '#059669' : '#dc2626' ?>"><?= formatMoney($pnl['profit']) ?></strong>
+    </div>
+</div>
+
+<div class="card event-category-card">
+    <div class="event-category-head">
+        <div>
+            <h3>Category spend</h3>
+            <p class="subtitle" style="margin:0">
+                Consolidated by category for this event
+                <?php if (!empty($pnl['estimate_title'])): ?>
+                    · using <?= e($pnl['estimate_title']) ?>
+                <?php endif; ?>
+            </p>
+        </div>
+        <div class="event-category-legend">
+            <span><i class="swatch-partner"></i>Partner (paid)</span>
+            <span><i class="swatch-proposal"></i>Stock / proposal cost</span>
+        </div>
+    </div>
+
+    <?php if (empty($categoryCosts)): ?>
+        <div class="event-category-empty">
+            No category costs yet. Add partner expenses or inventory lines on an estimate to see the breakdown.
+            <div class="flex" style="justify-content:center;margin-top:.75rem;gap:.5rem">
+                <a href="?id=<?= $id ?>&tab=expenses" class="btn btn-sm btn-secondary">Add expenses</a>
+                <a href="estimate-form.php?event_id=<?= $id ?>&customer_id=<?= (int)$event['customer_id'] ?>" class="btn btn-sm btn-primary">Open estimate</a>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="event-category-list">
+            <?php foreach ($categoryCosts as $cat):
+                $width = $maxCategory > 0 ? max(4, ($cat['total'] / $maxCategory) * 100) : 0;
+                $partnerShare = $cat['total'] > 0 ? ($cat['partner'] / $cat['total']) * 100 : 0;
+                $proposalShare = $cat['total'] > 0 ? ($cat['proposal'] / $cat['total']) * 100 : 0;
+            ?>
+            <div class="event-category-row">
+                <div>
+                    <div class="event-category-name"><?= e($cat['name']) ?></div>
+                    <span class="event-category-meta"><?= e(number_format((float)$cat['share'], 1)) ?>% of spend</span>
+                </div>
+                <div class="event-category-track" title="<?= e($cat['name']) ?>">
+                    <div class="event-category-fill" style="width:<?= e(number_format($width, 2, '.', '')) ?>%">
+                        <?php if ($partnerShare > 0): ?>
+                            <span class="seg-partner" style="width:<?= e(number_format($partnerShare, 2, '.', '')) ?>%"></span>
+                        <?php endif; ?>
+                        <?php if ($proposalShare > 0): ?>
+                            <span class="seg-proposal" style="width:<?= e(number_format($proposalShare, 2, '.', '')) ?>%"></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="event-category-amount">
+                    <strong><?= formatMoney($cat['total']) ?></strong>
+                    <em>
+                        <?php if ($cat['partner'] > 0 && $cat['proposal'] > 0): ?>
+                            <?= formatMoney($cat['partner']) ?> + <?= formatMoney($cat['proposal']) ?>
+                        <?php elseif ($cat['partner'] > 0): ?>
+                            Partner
+                        <?php else: ?>
+                            Proposal
+                        <?php endif; ?>
+                    </em>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="table-wrap">
+            <table class="event-category-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="is-num">Partner</th>
+                        <th class="is-num">Proposal</th>
+                        <th class="is-num">Total</th>
+                        <th class="is-num">Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($categoryCosts as $cat): ?>
+                    <tr>
+                        <td><strong><?= e($cat['name']) ?></strong></td>
+                        <td class="is-num"><?= $cat['partner'] > 0 ? formatMoney($cat['partner']) : '—' ?></td>
+                        <td class="is-num"><?= $cat['proposal'] > 0 ? formatMoney($cat['proposal']) : '—' ?></td>
+                        <td class="is-num"><strong><?= formatMoney($cat['total']) ?></strong></td>
+                        <td class="is-num"><?= e(number_format((float)$cat['share'], 1)) ?>%</td>
+                    </tr>
+                <?php endforeach; ?>
+                <tr>
+                    <td><strong>All categories</strong></td>
+                    <td class="is-num"><strong><?= formatMoney($pnl['expenses']) ?></strong></td>
+                    <td class="is-num"><strong><?= formatMoney($pnl['proposal_cost'] ?? 0) ?></strong></td>
+                    <td class="is-num"><strong><?= formatMoney($pnl['category_total'] ?? 0) ?></strong></td>
+                    <td class="is-num">100%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 

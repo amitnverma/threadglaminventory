@@ -26,6 +26,9 @@ $currentPage = $currentPage ?? '';
     <?php if (!empty($loadCustomerHub)): ?>
     <link rel="stylesheet" href="assets/css/customer-hub.css">
     <?php endif; ?>
+    <?php if (!empty($loadEventHub)): ?>
+    <link rel="stylesheet" href="assets/css/event-hub.css">
+    <?php endif; ?>
 </head>
 <body>
 <div class="app">
