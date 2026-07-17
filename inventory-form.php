@@ -35,7 +35,6 @@ $pageTitle = $id ? 'Edit Item' : 'New Item';
 require_once __DIR__ . '/includes/header.php';
 $d = $item ?: ['name'=>'','sku'=>'','category_id'=>'','description'=>'','quantity_on_hand'=>1,'unit_cost'=>0,'rental_price'=>0,'sale_price'=>0,'condition_status'=>'good','reorder_level'=>5];
 $previewSku = $id ? ($d['sku'] ?: '—') : generateSku($d['category_id'] ?: null);
-$previewReorder = generateReorderLevel((int)$d['quantity_on_hand']);
 ?>
 
 <div class="page-header">
@@ -84,11 +83,6 @@ $previewReorder = generateReorderLevel((int)$d['quantity_on_hand']);
                 </div>
             </div>
             <div class="form-group">
-                <label>Reorder Level</label>
-                <input value="<?= $previewReorder ?>" class="readonly-field" readonly>
-                <p class="hint">Auto-calculated at 20% of quantity (min 3)</p>
-            </div>
-            <div class="form-group">
                 <label>Photo</label>
                 <input type="file" name="image" accept="image/*">
                 <p class="hint">Upload a clear product photo for catalog display</p>
@@ -100,7 +94,7 @@ $previewReorder = generateReorderLevel((int)$d['quantity_on_hand']);
         </form>
     </div>
     <?php if ($id):
-        $img = getPrimaryImage('inventory', $id);
+        $img = getInventoryPrimaryImage((int)$id);
     ?>
     <div class="card">
         <h3>Current Photo</h3>

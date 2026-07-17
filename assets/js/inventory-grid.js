@@ -14,6 +14,7 @@
     var saveBtn = document.getElementById('inv-grid-save');
     var selectedEl = document.getElementById('inv-grid-selected');
     var deleteSelectedBtn = document.getElementById('inv-grid-delete-selected');
+    var imageUploader = null;
 
     function setStatus(text, cls) {
         if (!statusEl) return;
@@ -32,6 +33,14 @@
             if (deleteSelectedBtn) deleteSelectedBtn.disabled = count === 0;
         },
         columns: [
+            {
+                key: 'image_url',
+                label: 'Image',
+                type: 'readonly',
+                widthClass: 'col-image',
+                className: 'inv-image-cell',
+                format: InventoryImageUpload.renderCell
+            },
             {
                 key: 'name',
                 label: 'Item',
@@ -62,12 +71,8 @@
                 type: 'readonly',
                 widthClass: 'col-qty',
                 align: 'right',
-                format: function (v, row) {
-                    var qty = Number(v) || 0;
-                    var low = qty <= (Number(row.reorder_level) || 0);
-                    return low
-                        ? '<span class="inv-low-qty">' + qty + '</span>'
-                        : String(qty);
+                format: function (v) {
+                    return String(Number(v) || 0);
                 }
             },
             {
@@ -102,12 +107,16 @@
         renderRowActions: function (row) {
             if (!row.id) return '';
             return (
-                '<a class="btn btn-sm btn-secondary" href="inventory-view.php?id=' + row.id + '" title="Photos & history">⋯</a>' +
+                '<a class="btn btn-sm btn-secondary" href="inventory-view.php?id=' + row.id + '" title="Details and history">⋯</a>' +
                 '<a class="btn btn-sm btn-secondary" href="inventory-buy.php?item=' + row.id + '" title="Restock">+</a>' +
                 '<button type="button" class="btn btn-sm btn-danger" data-sheet-action="delete" title="Delete">×</button>'
             );
         },
         onRowAction: function (action, row) {
+            if (action === 'upload-image') {
+                if (imageUploader) imageUploader.choose(row);
+                return;
+            }
             if (action !== 'delete' || !row || !row.id) return;
             if (!confirm('Delete "' + row.name + '"? This hides it from inventory.')) return;
 
@@ -135,6 +144,15 @@
         onDirty: function (dirty) {
             if (saveBtn) saveBtn.disabled = !dirty;
             setStatus(dirty ? 'Unsaved changes' : 'All saved', dirty ? 'is-dirty' : '');
+        }
+    });
+
+    imageUploader = InventoryImageUpload.create({
+        apiUrl: cfg.apiUrl,
+        csrf: cfg.csrf,
+        onState: setStatus,
+        onUploaded: function (row) {
+            sheet._refreshComputed(row);
         }
     });
 

@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$images = getImages('inventory', $id);
+$images = getInventoryImages($id);
 $adjustments = query('SELECT * FROM inventory_adjustments WHERE inventory_item_id=? ORDER BY created_at DESC LIMIT 10', [$id]);
 $purchaseHistory = query(
     'SELECT p.id, p.supplier, p.purchase_date, pli.quantity, pli.unit_cost, pli.line_total
@@ -28,7 +28,7 @@ $purchaseHistory = query(
      WHERE pli.inventory_item_id=? ORDER BY p.purchase_date DESC LIMIT 10',
     [$id]
 );
-$primaryImg = getPrimaryImage('inventory', $id);
+$primaryImg = getInventoryPrimaryImage($id);
 
 $currentPage = 'inventory';
 $pageTitle = $item['name'];
@@ -60,10 +60,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card">
             <h3>Details</h3>
             <div class="form-row" style="margin-top:.5rem">
-                <div><span class="text-muted">Quantity</span><br><strong style="font-size:1.5rem"><?= (int)$item['quantity_on_hand'] ?></strong>
-                <?php if ($item['quantity_on_hand'] <= $item['reorder_level']): ?><span class="badge badge-low">Low Stock</span><?php endif; ?>
-                </div>
-                <div><span class="text-muted">Reorder At</span><br><strong><?= (int)$item['reorder_level'] ?></strong></div>
+                <div><span class="text-muted">Quantity</span><br><strong style="font-size:1.5rem"><?= (int)$item['quantity_on_hand'] ?></strong></div>
                 <div><span class="text-muted">Condition</span><br><strong><?= e(ucfirst($item['condition_status'])) ?></strong></div>
             </div>
             <hr style="margin:1rem 0;border:none;border-top:1px solid #e5e7eb">

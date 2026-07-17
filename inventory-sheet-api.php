@@ -18,6 +18,34 @@ if (!verifyCsrf($_POST['csrf_token'] ?? null)) {
 
 $action = $_POST['action'] ?? '';
 
+if ($action === 'upload_image') {
+    $id = (int)($_POST['id'] ?? 0);
+    $item = $id > 0
+        ? queryOne('SELECT id FROM inventory_items WHERE id=? AND deleted_at IS NULL', [$id])
+        : null;
+    if (!$item) {
+        echo json_encode(['ok' => false, 'error' => 'Inventory item not found.']);
+        exit;
+    }
+    if (empty($_FILES['image']['name']) || !uploadImage('inventory', $id, $_FILES['image'])) {
+        echo json_encode(['ok' => false, 'error' => 'Choose a JPG, PNG, GIF, or WebP image.']);
+        exit;
+    }
+    $attachmentId = (int)lastId();
+    execute(
+        'UPDATE attachments SET sort_order=sort_order+1 WHERE attachable_type=? AND attachable_id=? AND id<>?',
+        ['inventory', $id, $attachmentId]
+    );
+    execute('UPDATE attachments SET sort_order=0 WHERE id=?', [$attachmentId]);
+
+    echo json_encode([
+        'ok' => true,
+        'image_url' => imgUrl(getInventoryPrimaryImage($id)),
+        'error' => null,
+    ]);
+    exit;
+}
+
 if ($action === 'batch_update') {
     $raw = $_POST['rows'] ?? '[]';
     $rows = is_string($raw) ? json_decode($raw, true) : $raw;

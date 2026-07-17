@@ -21,12 +21,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($item) {
         $err = decorInventoryUpdate($id, $payload);
-        flash($err ? 'error' : 'success', $err ?: 'Decor item updated.');
+        $imageError = !$err && !empty($_FILES['image']['name'])
+            && !uploadImage('decor_inventory', $id, $_FILES['image']);
+        flash(
+            $err || $imageError ? 'error' : 'success',
+            $err ?: ($imageError ? 'Item saved, but the image could not be uploaded.' : 'Decor item updated.')
+        );
         redirect($err ? ('decor-inventory-form.php?id=' . $id) : 'decor-inventory.php');
     }
 
     $err = decorInventoryCreate($payload);
-    flash($err ? 'error' : 'success', $err ?: 'Decor purchase recorded.');
+    $newId = $err ? 0 : (int)lastId();
+    $imageError = !$err && !empty($_FILES['image']['name'])
+        && !uploadImage('decor_inventory', $newId, $_FILES['image']);
+    flash(
+        $err || $imageError ? 'error' : 'success',
+        $err ?: ($imageError ? 'Purchase saved, but the image could not be uploaded.' : 'Decor purchase recorded.')
+    );
     redirect($err ? 'decor-inventory-form.php' : 'decor-inventory.php');
 }
 
@@ -86,7 +97,7 @@ $values = [
 <?php endif; ?>
 
 <div class="card decor-form-card">
-    <form method="post" id="decor-item-form">
+    <form method="post" enctype="multipart/form-data" id="decor-item-form">
         <?= csrfField() ?>
         <div class="grid-2">
             <div class="form-group">
@@ -152,6 +163,25 @@ $values = [
             <label>Notes</label>
             <textarea name="notes" rows="2"><?= e((string)$values['notes']) ?></textarea>
         </div>
+
+        <div class="form-group">
+            <label>Item image</label>
+            <input type="file" name="image" accept="image/*">
+            <p class="hint">This same image will appear in master inventory after the item is linked or handed off.</p>
+        </div>
+
+        <?php if ($item): ?>
+        <div class="form-group">
+            <img
+                src="<?= e(imgUrl(getDecorInventoryPrimaryImage(
+                    (int)$item['id'],
+                    !empty($item['inventory_item_id']) ? (int)$item['inventory_item_id'] : null
+                ))) ?>"
+                alt="<?= e((string)$item['name']) ?>"
+                style="width:120px;height:90px;object-fit:cover;border-radius:8px"
+            >
+        </div>
+        <?php endif; ?>
 
         <div class="flex" style="margin-top:1rem">
             <button type="submit" class="btn btn-primary"><?= $item ? 'Save changes' : 'Save purchase' ?></button>

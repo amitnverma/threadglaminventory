@@ -12,6 +12,7 @@
     var saveBtn = document.getElementById('decor-grid-save');
     var selectedEl = document.getElementById('decor-grid-selected');
     var deleteSelectedBtn = document.getElementById('decor-grid-delete-selected');
+    var imageUploader = null;
 
     function setStatus(text, cls) {
         if (!statusEl) return;
@@ -33,6 +34,14 @@
             if (deleteSelectedBtn) deleteSelectedBtn.disabled = count === 0;
         },
         columns: [
+            {
+                key: 'image_url',
+                label: 'Image',
+                type: 'readonly',
+                widthClass: 'col-image',
+                className: 'inv-image-cell',
+                format: InventoryImageUpload.renderCell
+            },
             {
                 key: 'name',
                 label: 'Item',
@@ -119,6 +128,11 @@
         onRowAction: function (action, row) {
             if (!row || !row.id) return;
 
+            if (action === 'upload-image') {
+                if (imageUploader) imageUploader.choose(row);
+                return;
+            }
+
             if (action === 'return') {
                 var dialog = document.getElementById('decor-return-dialog');
                 var idEl = document.getElementById('decor_return_id');
@@ -159,6 +173,15 @@
         onDirty: function (dirty) {
             if (saveBtn) saveBtn.disabled = !dirty;
             setStatus(dirty ? 'Unsaved changes' : 'All saved', dirty ? 'is-dirty' : '');
+        }
+    });
+
+    imageUploader = InventoryImageUpload.create({
+        apiUrl: cfg.apiUrl,
+        csrf: cfg.csrf,
+        onState: setStatus,
+        onUploaded: function (row) {
+            sheet._refreshComputed(row);
         }
     });
 

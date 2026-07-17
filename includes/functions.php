@@ -124,6 +124,162 @@ function getPrimaryImage(string $type, int $id): ?string
     return $row['thumbnail_path'] ?: $row['file_path'];
 }
 
+/**
+ * Get the first image shown for a master inventory item.
+ * Images uploaded to linked Decor stock remain in one place and reuse the same URL.
+ */
+function getInventoryPrimaryImage(int $inventoryId): ?string
+{
+    $images = getInventoryPrimaryImages([$inventoryId]);
+    return $images[$inventoryId] ?? null;
+}
+
+/**
+ * Resolve inventory thumbnails in one query so large sheets do not query per row.
+ *
+ * @return array<int,string>
+ */
+function getInventoryPrimaryImages(array $inventoryIds): array
+{
+    $inventoryIds = array_values(array_unique(array_filter(array_map('intval', $inventoryIds))));
+    if (!$inventoryIds) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($inventoryIds), '?'));
+    try {
+        $rows = query(
+            "SELECT a.*,
+                    d.inventory_item_id AS decor_inventory_item_id,
+                    h.inventory_item_id AS handoff_inventory_item_id
+             FROM attachments a
+             LEFT JOIN decor_inventory_items d
+               ON a.attachable_type='decor_inventory' AND a.attachable_id=d.id
+             LEFT JOIN decor_inventory_handoffs h ON h.decor_inventory_item_id=d.id
+             WHERE (a.attachable_type='inventory' AND a.attachable_id IN ($placeholders))
+                OR (a.attachable_type='decor_inventory' AND (
+                    d.inventory_item_id IN ($placeholders) OR h.inventory_item_id IN ($placeholders)
+                ))
+             ORDER BY a.created_at DESC, a.id DESC",
+            array_merge($inventoryIds, $inventoryIds, $inventoryIds)
+        );
+    } catch (Throwable $e) {
+        $rows = query(
+            "SELECT *, attachable_id AS inventory_item_id
+             FROM attachments
+             WHERE attachable_type='inventory' AND attachable_id IN ($placeholders)
+             ORDER BY created_at DESC, id DESC",
+            $inventoryIds
+        );
+    }
+
+    $wanted = array_fill_keys($inventoryIds, true);
+    $images = [];
+    foreach ($rows as $row) {
+        $path = $row['thumbnail_path'] ?: $row['file_path'];
+        $targets = ($row['attachable_type'] ?? '') === 'inventory'
+            ? [(int)$row['attachable_id']]
+            : [
+                (int)($row['decor_inventory_item_id'] ?? 0),
+                (int)($row['handoff_inventory_item_id'] ?? 0),
+            ];
+        foreach (array_unique($targets) as $targetId) {
+            if ($targetId > 0 && isset($wanted[$targetId]) && !isset($images[$targetId])) {
+                $images[$targetId] = $path;
+            }
+        }
+    }
+    return $images;
+}
+
+function getInventoryImages(int $inventoryId): array
+{
+    try {
+        return query(
+            "SELECT DISTINCT a.*
+             FROM attachments a
+             LEFT JOIN decor_inventory_items d
+               ON a.attachable_type='decor_inventory' AND a.attachable_id=d.id
+             LEFT JOIN decor_inventory_handoffs h ON h.decor_inventory_item_id=d.id
+             WHERE (a.attachable_type='inventory' AND a.attachable_id=?)
+                OR (a.attachable_type='decor_inventory' AND (d.inventory_item_id=? OR h.inventory_item_id=?))
+             ORDER BY a.created_at DESC, a.id DESC",
+            [$inventoryId, $inventoryId, $inventoryId]
+        );
+    } catch (Throwable $e) {
+        return getImages('inventory', $inventoryId);
+    }
+}
+
+/**
+ * Get the first image shown for Decor stock, falling back to its linked master item.
+ */
+function getDecorInventoryPrimaryImage(int $decorInventoryId, ?int $inventoryId = null): ?string
+{
+    $images = getDecorInventoryPrimaryImages([[
+        'id' => $decorInventoryId,
+        'inventory_item_id' => $inventoryId,
+    ]]);
+    return $images[$decorInventoryId] ?? null;
+}
+
+/**
+ * Resolve Decor thumbnails and linked master images in one query.
+ *
+ * @return array<int,string>
+ */
+function getDecorInventoryPrimaryImages(array $items): array
+{
+    $decorIds = [];
+    $inventoryToDecor = [];
+    foreach ($items as $item) {
+        $decorId = (int)($item['id'] ?? 0);
+        if ($decorId <= 0) continue;
+        $decorIds[] = $decorId;
+        $inventoryId = (int)($item['inventory_item_id'] ?? 0);
+        if ($inventoryId > 0) {
+            $inventoryToDecor[$inventoryId][] = $decorId;
+        }
+    }
+    $decorIds = array_values(array_unique($decorIds));
+    if (!$decorIds) {
+        return [];
+    }
+
+    $decorPlaceholders = implode(',', array_fill(0, count($decorIds), '?'));
+    $inventoryIds = array_keys($inventoryToDecor);
+    $where = ["(attachable_type='decor_inventory' AND attachable_id IN ($decorPlaceholders))"];
+    $params = $decorIds;
+    if ($inventoryIds) {
+        $inventoryPlaceholders = implode(',', array_fill(0, count($inventoryIds), '?'));
+        $where[] = "(attachable_type='inventory' AND attachable_id IN ($inventoryPlaceholders))";
+        $params = array_merge($params, $inventoryIds);
+    }
+
+    $rows = query(
+        "SELECT *
+         FROM attachments
+         WHERE " . implode(' OR ', $where) . "
+         ORDER BY created_at DESC, id DESC",
+        $params
+    );
+    $images = [];
+    foreach ($rows as $row) {
+        $path = $row['thumbnail_path'] ?: $row['file_path'];
+        if ($row['attachable_type'] === 'decor_inventory') {
+            $targets = [(int)$row['attachable_id']];
+        } else {
+            $targets = $inventoryToDecor[(int)$row['attachable_id']] ?? [];
+        }
+        foreach ($targets as $decorId) {
+            if (!isset($images[$decorId])) {
+                $images[$decorId] = $path;
+            }
+        }
+    }
+    return $images;
+}
+
 function createThumbnail(string $source, string $dest, int $maxSize = 400): bool
 {
     if (!function_exists('imagecreatefromjpeg')) return false;

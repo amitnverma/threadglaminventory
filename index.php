@@ -9,9 +9,7 @@ require_once __DIR__ . '/includes/header.php';
 $inventory = queryOne('SELECT COUNT(*) as c, COALESCE(SUM(quantity_on_hand),0) as q FROM inventory_items WHERE deleted_at IS NULL');
 $events = queryOne("SELECT COUNT(*) as c FROM events WHERE deleted_at IS NULL AND status NOT IN ('completed','cancelled') AND archived=0");
 $revenue = queryOne('SELECT COALESCE(SUM(total),0) as t FROM sales');
-$lowStock = queryOne('SELECT COUNT(*) as c FROM inventory_items WHERE deleted_at IS NULL AND quantity_on_hand <= reorder_level');
 $recentEvents = query('SELECT e.*, c.name as customer_name FROM events e JOIN customers c ON c.id=e.customer_id WHERE e.deleted_at IS NULL AND e.archived=0 ORDER BY e.event_date ASC LIMIT 5');
-$lowStockItems = query('SELECT i.*, c.name as category_name FROM inventory_items i LEFT JOIN inventory_categories c ON c.id=i.category_id WHERE i.deleted_at IS NULL AND i.quantity_on_hand <= i.reorder_level ORDER BY i.quantity_on_hand LIMIT 5');
 $recentContracts = query("SELECT c.*, cu.name as customer_name FROM contracts c JOIN customers cu ON cu.id=c.customer_id WHERE c.status IN ('draft','sent') ORDER BY c.updated_at DESC LIMIT 4");
 ?>
 
@@ -31,7 +29,6 @@ $recentContracts = query("SELECT c.*, cu.name as customer_name FROM contracts c 
     <div class="stat"><div class="label">Units in Stock</div><div class="value"><?= (int)$inventory['q'] ?></div></div>
     <div class="stat success"><div class="label">Active Events</div><div class="value"><?= (int)$events['c'] ?></div></div>
     <div class="stat success"><div class="label">Total Revenue</div><div class="value"><?= formatMoney($revenue['t']) ?></div></div>
-    <div class="stat <?= $lowStock['c'] > 0 ? 'warning' : '' ?>"><div class="label">Low Stock Alerts</div><div class="value"><?= (int)$lowStock['c'] ?></div></div>
 </div>
 
 <div class="grid-2">
@@ -73,26 +70,5 @@ $recentContracts = query("SELECT c.*, cu.name as customer_name FROM contracts c 
         <?php endif; ?>
     </div>
 </div>
-
-<?php if ($lowStockItems): ?>
-<div class="card">
-    <h3>⚠️ Low Stock Items</h3>
-    <div class="grid-4">
-        <?php foreach ($lowStockItems as $item):
-            $img = getPrimaryImage('inventory', $item['id']);
-        ?>
-        <div class="item-card">
-            <a href="inventory-view.php?id=<?= $item['id'] ?>">
-                <img src="<?= e(imgUrl($img)) ?>" alt="" class="item-card-img" style="height:100px">
-            </a>
-            <div class="item-card-body" style="padding:.75rem">
-                <h4 style="font-size:.85rem"><a href="inventory-view.php?id=<?= $item['id'] ?>"><?= e($item['name']) ?></a></h4>
-                <span class="badge badge-low">Qty: <?= (int)$item['quantity_on_hand'] ?></span>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

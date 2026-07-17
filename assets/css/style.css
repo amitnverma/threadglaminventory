@@ -146,7 +146,6 @@ textarea { min-height: 100px; resize: vertical; }
 .badge-sent, .badge-estimated { background: #dbeafe; color: #1e40af; }
 .badge-approved, .badge-confirmed, .badge-signed, .badge-completed { background: #d1fae5; color: #065f46; }
 .badge-cancelled, .badge-rejected { background: #fee2e2; color: #991b1b; }
-.badge-low { background: #fef3c7; color: #92400e; }
 
 /* Grid layouts */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }

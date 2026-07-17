@@ -63,8 +63,9 @@ $inventoryOptions = query(
 $handoffableItems = array_values(array_filter($items, static function ($row) {
     return decorInventoryIsHandoffable($row) && (int)$row['available_qty'] > 0;
 }));
+$decorImages = getDecorInventoryPrimaryImages($items);
 
-$gridRows = array_map(static function ($row) {
+$gridRows = array_map(static function ($row) use ($decorImages) {
     $returned = (int)$row['is_returned'] === 1;
     if ($returned) {
         $status = '<span class="badge badge-draft">Returned</span>';
@@ -88,6 +89,7 @@ $gridRows = array_map(static function ($row) {
         'default_markup_percent' => (float)$row['default_markup_percent'],
         'is_returned' => $returned ? 1 : 0,
         'status_label' => $status,
+        'image_url' => imgUrl($decorImages[(int)$row['id']] ?? null),
     ];
 }, $items);
 
@@ -95,7 +97,7 @@ $currentPage = 'decor-inventory';
 $pageTitle = 'Decor Inventory';
 $loadDecorInventory = true;
 $loadInventorySheet = true;
-$pageScripts = ['assets/js/decor-inventory-grid.js'];
+$pageScripts = ['assets/js/inventory-image-upload.js', 'assets/js/decor-inventory-grid.js'];
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -166,7 +168,7 @@ require_once __DIR__ . '/includes/header.php';
 <?php else: ?>
 <div class="card inv-sheet-card">
     <div class="inv-sheet-toolbar">
-        <span class="inv-sheet-hint">Edit cells inline. Use ⋯ for notes/returns details. Save when done.</span>
+        <span class="inv-sheet-hint">Click the image cell to add or replace a photo without leaving this sheet. Edit other cells inline and save when done.</span>
         <span class="spacer"></span>
         <span class="inv-sheet-status" id="decor-grid-selected">0 selected</span>
         <button type="button" class="btn btn-danger btn-sm" id="decor-grid-delete-selected" disabled>Delete selected</button>

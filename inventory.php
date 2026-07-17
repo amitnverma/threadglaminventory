@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $currentPage = 'inventory';
 $pageTitle = 'Inventory';
 $loadInventorySheet = true;
-$pageScripts = ['assets/js/inventory-grid.js'];
+$pageScripts = ['assets/js/inventory-image-upload.js', 'assets/js/inventory-grid.js'];
 require_once __DIR__ . '/includes/header.php';
 
 backfillDecorInventoryCategories();
@@ -65,6 +65,7 @@ $items = query(
      ORDER BY i.name",
     $params
 );
+$inventoryImages = getInventoryPrimaryImages(array_column($items, 'id'));
 $categories = query('SELECT * FROM inventory_categories ORDER BY name');
 ?>
 
@@ -105,7 +106,7 @@ $categories = query('SELECT * FROM inventory_categories ORDER BY name');
 <?php else: ?>
 <div class="card inv-sheet-card">
     <div class="inv-sheet-toolbar">
-        <span class="inv-sheet-hint">Click any cell to edit name, category, cost, rental, or sale. Qty changes go through Buy / Restock. Use ⋯ only for photos and history.</span>
+        <span class="inv-sheet-hint">Click the image cell to add or replace a photo without leaving this sheet. Other cells edit like a spreadsheet.</span>
         <span class="spacer"></span>
         <span class="inv-sheet-status" id="inv-grid-selected">0 selected</span>
         <button type="button" class="btn btn-danger btn-sm" id="inv-grid-delete-selected" disabled>Delete selected</button>
@@ -130,7 +131,7 @@ window.INV_GRID = {
         'sku' => $i['sku'],
         'category_id' => $i['category_id'] !== null ? (int)$i['category_id'] : '',
         'quantity_on_hand' => (int)$i['quantity_on_hand'],
-        'reorder_level' => (int)$i['reorder_level'],
+        'image_url' => imgUrl($inventoryImages[(int)$i['id']] ?? null),
         'unit_cost' => (float)$i['unit_cost'],
         'rental_price' => (float)$i['rental_price'],
         'sale_price' => (float)$i['sale_price'],

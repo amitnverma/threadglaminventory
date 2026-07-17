@@ -251,6 +251,59 @@
     opacity: .3;
 }
 
+.inv-sheet .col-image {
+    width: 3.4rem;
+    min-width: 3.4rem;
+}
+
+.inv-image-button {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 2.65rem;
+    padding: .12rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.inv-image-button img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #f1f5f9;
+}
+
+.inv-image-camera {
+    position: absolute;
+    right: .12rem;
+    bottom: .12rem;
+    display: grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, .82);
+    color: #fff;
+    font-size: .58rem;
+    line-height: 1;
+}
+
+.inv-image-button:hover,
+.inv-image-button:focus-visible {
+    background: var(--primary-light);
+    outline: none;
+}
+
+.inv-sheet .cell-readonly.inv-image-cell {
+    height: 2.65rem;
+    min-height: 2.65rem;
+    padding: 0 !important;
+    overflow: visible;
+}
+
 .inv-sheet .col-item {
     width: auto;
 }
@@ -448,11 +501,6 @@
 
 .inv-sheet-card {
     padding: .85rem 1rem 1rem;
-}
-
-.inv-low-qty {
-    color: var(--danger);
-    font-weight: 700;
 }
 
 .inv-sheet .sku-cell {
